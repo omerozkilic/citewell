@@ -1,0 +1,133 @@
+[project]
+name = "citewell"
+version = "0.0.0"
+description = "Citation-grounded document memory for AI assistants. Offline, MCP-native, Turkish-ready."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Ömer Özkılıç" }]
+keywords = ["rag", "mcp", "model-context-protocol", "pgvector", "retrieval", "citations", "turkish", "claude"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Natural Language :: Turkish",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Indexing",
+    "Typing :: Typed",
+]
+dependencies = [
+    "fastapi>=0.115",
+    "httpx>=0.27",
+    "mcp>=2.3,<3",
+    "numpy>=1.26",
+    "pgvector>=0.3",
+    "psycopg[binary]>=3.2",
+    "psycopg-pool>=3.2",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.4",
+    "pypdf>=5.0",
+    "python-multipart>=0.0.9",
+    "rich>=13.7",
+    "typer>=0.12",
+    "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+# Local embedding + reranker models (bge-m3, multilingual-e5, bge-reranker-v2-m3).
+models = ["sentence-transformers>=3.0", "torch>=2.3"]
+docx = ["python-docx>=1.1"]
+
+[project.urls]
+Homepage = "https://github.com/omerozkilic/citewell"
+Documentation = "https://omerozkilic.github.io/citewell"
+Repository = "https://github.com/omerozkilic/citewell"
+Issues = "https://github.com/omerozkilic/citewell/issues"
+Changelog = "https://github.com/omerozkilic/citewell/blob/main/CHANGELOG.md"
+
+[project.scripts]
+citewell = "citewell.cli:app"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.11",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "reportlab>=4.2",
+    "ruff>=0.6",
+]
+docs = [
+    "mkdocs-material>=9.5",
+]
+
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/citewell"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/citewell", "README.md", "LICENSE", "CHANGELOG.md"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "RUF", "S", "PT", "TID"]
+ignore = [
+    "S101",   # assert is fine in tests
+    "S608",   # SQL is composed with psycopg.sql, not string formatting of user input
+    "RUF001", # Turkish characters (ı, İ) are intentional
+    "RUF002",
+    "RUF003",
+    "B008",   # Typer / FastAPI use call expressions in defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "PT011", "PT018", "E501"]
+"scripts/**" = ["S"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["pgvector.*", "sentence_transformers.*", "docx.*", "pypdf.*", "reportlab.*", "torch.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+addopts = "-ra --strict-markers"
+markers = [
+    "db: requires PostgreSQL with pgvector (set CITEWELL_TEST_DATABASE_URL)",
+    "models: requires downloaded embedding/reranker models",
+]
+filterwarnings = ["ignore::DeprecationWarning:pypdf.*"]
+
+[tool.coverage.run]
+source = ["citewell"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
