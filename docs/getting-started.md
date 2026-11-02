@@ -1,0 +1,66 @@
+# Getting started
+
+## With Docker (recommended)
+
+Requirements: Docker with Compose v2. About 4 GB of disk for the image and models.
+
+```bash
+git clone https://github.com/omerozkilic/citewell && cd citewell
+docker compose up -d
+```
+
+This starts PostgreSQL 17 with pgvector and the Citewell server on `127.0.0.1:8000`
+(REST + MCP). The schema is created automatically (`serve --init`).
+
+Download the models once (internet required), then everything runs offline:
+
+```bash
+docker compose run --rm citewell models download
+```
+
+Put documents into `./data` (mounted read-only at `/data`) and ingest them:
+
+```bash
+docker compose run --rm citewell ingest /data                     # default collection
+docker compose run --rm citewell ingest /data/hr -c hr            # a separate collection
+docker compose run --rm citewell search "yıllık izin kaç gün?" -c hr
+```
+
+Ingest is idempotent: unchanged files are skipped by SHA-256, changed files are replaced atomically.
+
+!!! tip "Sample corpus"
+    `examples/corpus` contains a fictional Turkish company handbook (PDF + Markdown) and
+    `examples/eval/tr-sample.jsonl` has 35 questions about it:
+
+    ```bash
+    docker compose run --rm -v ./examples:/examples:ro citewell ingest /examples/corpus
+    docker compose run --rm -v ./examples:/examples:ro citewell eval /examples/eval/tr-sample.jsonl
+    ```
+
+## Without Docker
+
+Requirements: Python 3.11+, [uv](https://docs.astral.sh/uv/), PostgreSQL 15+ with
+[pgvector](https://github.com/pgvector/pgvector) ≥ 0.7 (0.8+ recommended).
+
+```bash
+uv sync --extra models          # sentence-transformers + PyTorch
+docker compose up -d db         # or point CITEWELL_DATABASE_URL at your own PostgreSQL
+uv run citewell init
+uv run citewell models download
+uv run citewell ingest ~/Documents/policies
+uv run citewell serve           # http://127.0.0.1:8000/docs and /mcp
+```
+
+Run `citewell doctor` at any time to check the database, pgvector version, schema and models.
+
+## Supported formats
+
+| Format | Location in citations |
+|---|---|
+| PDF (text layer) | page number |
+| Plain text | page number if the file contains form feeds (`pdftotext` output), otherwise none |
+| Markdown | heading path, e.g. `Bilgi Güvenliği Politikası > Parola Kuralları` |
+| DOCX (`citewell[docx]`) | heading |
+| HTML | – |
+
+Scanned PDFs without a text layer are reported as `skipped`; OCR is on the roadmap.
