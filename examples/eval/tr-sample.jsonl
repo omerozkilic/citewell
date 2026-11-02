@@ -1,0 +1,35 @@
+{"id": "tr01", "query": "Haftalık standart çalışma süresi kaç saat?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 1}], "tags": ["exact"]}
+{"id": "tr02", "query": "Çekirdek mesai saatleri hangi saatler arasında?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 1}], "tags": ["paraphrase"]}
+{"id": "tr03", "query": "Fazla mesai ücreti nasıl hesaplanır?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 1}], "tags": ["exact"]}
+{"id": "tr04", "query": "Yeni işe başlayan birinin deneme süresi ne kadar?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 1}], "tags": ["paraphrase"]}
+{"id": "tr05", "query": "Altı yıllık bir çalışan yılda kaç gün izin kullanabilir?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 2}], "tags": ["reasoning"]}
+{"id": "tr06", "query": "Kullanmadığım izin günlerini seneye aktarabilir miyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 2}], "tags": ["paraphrase"]}
+{"id": "tr07", "query": "İzin talebini ne kadar önceden yapmam gerekiyor?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 2}], "tags": ["paraphrase"]}
+{"id": "tr08", "query": "Hastalandığımda rapor gerekiyor mu?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 3}], "tags": ["paraphrase"]}
+{"id": "tr09", "query": "Evlilik izni kaç gün?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 3}], "tags": ["morphology"]}
+{"id": "tr10", "query": "Babalık izni süresi", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 3}], "tags": ["paraphrase"]}
+{"id": "tr11", "query": "Ev değiştirdiğimde izin alabilir miyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 3}], "tags": ["paraphrase"]}
+{"id": "tr12", "query": "Ankara'da otelde bir gece için en fazla ne kadar harcayabilirim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 4}], "tags": ["paraphrase"]}
+{"id": "tr13", "query": "Günlük yemek harcırahı ne kadar?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 4}], "tags": ["exact"]}
+{"id": "tr14", "query": "Masraf fişlerini kaç gün içinde sisteme girmeliyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 4}], "tags": ["exact"]}
+{"id": "tr15", "query": "Uzun uçuşlarda business class alabilir miyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 4}], "tags": ["cross-lingual"]}
+{"id": "tr16", "query": "Kişi başı yıllık eğitim bütçesi", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 5}], "tags": ["exact"]}
+{"id": "tr17", "query": "Pahalı bir sertifikayı şirket öderse ayrılmak için ne kadar beklemeliyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 5}], "tags": ["reasoning"]}
+{"id": "tr18", "query": "Mentorluk programına nasıl katılırım?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 5}], "tags": ["exact"]}
+{"id": "tr19", "query": "Tedarikçiden hediye kabul edebilir miyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 6}], "tags": ["paraphrase"]}
+{"id": "tr20", "query": "Çıkar çatışmasını kime ve ne zaman bildirmeliyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 6}], "tags": ["exact"]}
+{"id": "tr21", "query": "İhbar eden çalışana misilleme yapılırsa ne olur?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 6}], "tags": ["paraphrase"]}
+{"id": "tr22", "query": "Parolam en az kaç karakter olmalı?", "relevant": [{"source": "bilgi-guvenligi-politikasi.md"}], "tags": ["morphology"]}
+{"id": "tr23", "query": "SMS doğrulama kodu ikinci faktör olarak kabul ediliyor mu?", "relevant": [{"source": "bilgi-guvenligi-politikasi.md"}], "tags": ["exact"]}
+{"id": "tr24", "query": "Müşteri sözleşmeleri hangi veri sınıfına girer?", "relevant": [{"source": "bilgi-guvenligi-politikasi.md"}], "tags": ["reasoning"]}
+{"id": "tr25", "query": "Laptopum çalınırsa ne yapmalıyım?", "relevant": [{"source": "bilgi-guvenligi-politikasi.md"}], "tags": ["paraphrase"]}
+{"id": "tr26", "query": "Güvenlik yamaları kaç gün içinde kurulmalı?", "relevant": [{"source": "bilgi-guvenligi-politikasi.md"}], "tags": ["paraphrase"]}
+{"id": "tr27", "query": "Haftada kaç gün evden çalışabilirim?", "relevant": [{"source": "uzaktan-calisma-yonergesi.md"}], "tags": ["paraphrase"]}
+{"id": "tr28", "query": "Ev interneti için şirket ödeme yapıyor mu?", "relevant": [{"source": "uzaktan-calisma-yonergesi.md"}], "tags": ["paraphrase"]}
+{"id": "tr29", "query": "Yurt dışından en fazla kaç gün çalışabilirim?", "relevant": [{"source": "uzaktan-calisma-yonergesi.md"}], "tags": ["exact"]}
+{"id": "tr30", "query": "Ergonomik sandalye desteği", "relevant": [{"source": "uzaktan-calisma-yonergesi.md"}], "tags": ["exact"]}
+{"id": "tr31", "query": "Reddedilen adayların CV'leri ne kadar süre tutuluyor?", "relevant": [{"source": "kisisel-veri-saklama-ve-imha.md"}], "tags": ["paraphrase"]}
+{"id": "tr32", "query": "Güvenlik kamerası görüntüleri kaç gün saklanır?", "relevant": [{"source": "kisisel-veri-saklama-ve-imha.md"}], "tags": ["paraphrase"]}
+{"id": "tr33", "query": "Periyodik imha hangi sıklıkla yapılır?", "relevant": [{"source": "kisisel-veri-saklama-ve-imha.md"}], "tags": ["exact"]}
+{"id": "tr34", "query": "Verilerimin silinmesini nasıl talep ederim?", "relevant": [{"source": "kisisel-veri-saklama-ve-imha.md"}], "tags": ["paraphrase"]}
+{"id": "tr35", "query": "Kişisel veri ihlalini kurula kaç saat içinde bildirmek gerekir?", "relevant": [{"source": "bilgi-guvenligi-politikasi.md"}], "tags": ["exact"]}

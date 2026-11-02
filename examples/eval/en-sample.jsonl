@@ -1,0 +1,4 @@
+{"id": "en01", "query": "When does the on-call rotation hand over?", "relevant": [{"source": "on-call-handbook.md"}], "collection": "handbook-en"}
+{"id": "en02", "query": "How quickly must a Sev1 incident be acknowledged?", "relevant": [{"source": "on-call-handbook.md"}], "collection": "handbook-en"}
+{"id": "en03", "query": "What compensation do engineers get for being on call?", "relevant": [{"source": "on-call-handbook.md"}], "collection": "handbook-en"}
+{"id": "en04", "query": "Deadline for the post-mortem after a major outage", "relevant": [{"source": "on-call-handbook.md"}], "collection": "handbook-en"}
