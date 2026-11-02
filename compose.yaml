@@ -1,0 +1,56 @@
+# docker compose up -d
+#   REST API + OpenAPI docs : http://localhost:8000/docs
+#   MCP (Streamable HTTP)   : http://localhost:8000/mcp
+#
+# Put documents in ./data, then:
+#   docker compose run --rm citewell models download   # once, needs internet
+#   docker compose run --rm citewell ingest /data
+#   docker compose run --rm citewell search "yıllık izin kaç gün?"
+
+name: citewell
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: citewell
+      POSTGRES_PASSWORD: ${CITEWELL_DB_PASSWORD:-citewell}
+      POSTGRES_DB: citewell
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      # Bound to localhost only, so the host-side CLI can reach it.
+      - "127.0.0.1:${CITEWELL_DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U citewell -d citewell"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  citewell:
+    build:
+      context: .
+      args:
+        WITH_MODELS: ${CITEWELL_WITH_MODELS:-true}
+    image: ghcr.io/omerozkilic/citewell:${CITEWELL_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CITEWELL_DATABASE_URL: postgresql://citewell:${CITEWELL_DB_PASSWORD:-citewell}@db:5432/citewell
+      # Other containers (e.g. Open WebUI) reach the server as http://citewell:8000
+      CITEWELL_ALLOWED_HOSTS: '["citewell:*"]'
+    volumes:
+      - models:/models
+      - ./data:/data:ro
+    ports:
+      - "127.0.0.1:${CITEWELL_PORT:-8000}:8000"
+
+volumes:
+  pgdata:
+  models:
