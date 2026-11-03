@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/omerozkilic/citewell/compare/v0.1.0...v0.1.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **release:** keep uv.lock in sync, use vX.Y.Z tags and publish versioned images ([#5](https://github.com/omerozkilic/citewell/issues/5)) ([a05c042](https://github.com/omerozkilic/citewell/commit/a05c0429c8373b696102ccccfc28ddf748ed0567))
+
 ## 0.1.0 (2026-11-03)
 
 
