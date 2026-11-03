@@ -65,3 +65,46 @@ def test_build_reranker() -> None:
     assert isinstance(build_reranker("lexical", "x"), LexicalOverlapReranker)
     with pytest.raises(ValueError):
         build_reranker("nope", "x")
+
+
+def _rec(cid: str, start: int, end: int, page: int | None = 1, doc: int = 1, section: str | None = None):  # type: ignore[no-untyped-def]
+    from citewell.models import ChunkRecord
+
+    return ChunkRecord(
+        chunk_id=cid,
+        collection="c",
+        document_id=doc,
+        source="a.pdf",
+        title=None,
+        ord=0,
+        page=page,
+        section=section,
+        char_start=start,
+        char_end=end,
+        text="x",
+    )
+
+
+def test_overlaps() -> None:
+    from citewell.search import overlaps
+
+    assert overlaps(_rec("a", 0, 100), _rec("b", 20, 90))  # b inside a
+    assert overlaps(_rec("a", 0, 100), _rec("b", 40, 140))  # 60 of 100 shared
+    assert not overlaps(_rec("a", 0, 100), _rec("b", 80, 180))  # 20 shared
+    assert not overlaps(_rec("a", 0, 100), _rec("b", 0, 100, page=2))
+    assert not overlaps(_rec("a", 0, 100), _rec("b", 0, 100, doc=2))
+    assert not overlaps(_rec("a", 0, 100, page=None, section="A"), _rec("b", 0, 100, page=None, section="B"))
+
+
+def test_select_diverse_skips_near_duplicates_and_backfills() -> None:
+    from citewell.search import select_diverse
+
+    records = {
+        "a": _rec("a", 0, 300),
+        "b": _rec("b", 0, 120),  # repeats a
+        "c": _rec("c", 0, 300, page=2),
+        "d": _rec("d", 0, 300, page=3),
+    }
+    ranked = [("a", 0.9), ("b", 0.8), ("c", 0.7), ("d", 0.6)]
+    assert [cid for cid, _ in select_diverse(ranked, records, 3)] == ["a", "c", "d"]
+    assert [cid for cid, _ in select_diverse(ranked, records, 1)] == ["a"]

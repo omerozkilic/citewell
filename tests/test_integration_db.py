@@ -368,3 +368,9 @@ def test_ingest_warns_about_pages_without_text(citewell: Citewell, tmp_path: Any
     assert doc.page_count == 4
     assert doc.pages_without_text == 3
     citewell.store.delete_collection("scan-test")
+
+
+def test_preload_is_noop_for_hash_backend(citewell: Citewell) -> None:
+    assert citewell.preload() is None
+    other = Citewell(make_settings(preload_models=False))
+    assert other.preload() is None

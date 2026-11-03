@@ -52,6 +52,7 @@ to start with a different configuration rather than silently mixing incompatible
 | `CITEWELL_ALLOWED_HOSTS` | `[]` | extra `Host` values for DNS-rebinding protection, JSON list, e.g. `["citewell:*"]` |
 | `CITEWELL_MAX_UPLOAD_MB` | `50` | |
 | `CITEWELL_LOG_LEVEL` | `INFO` | |
+| `CITEWELL_PRELOAD_MODELS` | `true` | `serve` / `mcp` load the embedding model in the background at startup |
 
 ## Offline mode
 

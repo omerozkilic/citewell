@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from citewell.config import Settings
 from citewell.embeddings import Embedder
 from citewell.fusion import reciprocal_rank_fusion
-from citewell.models import Collection, SearchHit, SearchResponse
+from citewell.models import ChunkRecord, Collection, SearchHit, SearchResponse
 from citewell.rerank import Reranker
 from citewell.store import NotFoundError, Store
 from citewell.text import best_quote
@@ -65,7 +65,6 @@ class SearchService:
         return [available[n] for n in names]
 
     def search(self, req: SearchRequest) -> SearchResponse:
-        t0 = time.perf_counter()
         query = req.query.strip()
         if not query:
             raise ValueError("query must not be empty")
@@ -75,6 +74,10 @@ class SearchService:
         use_rerank = self.settings.rerank_by_default if req.rerank is None else req.rerank
         if use_rerank and self.reranker is None:
             raise ValueError("reranking requested but no reranker is configured")
+        if req.mode in ("vector", "hybrid"):
+            _ = self.embedder  # load the model before timing: took_ms measures search only
+
+        t0 = time.perf_counter()
 
         collections = self._resolve_collections(req.collections)
         if not collections:
@@ -118,7 +121,8 @@ class SearchService:
             merged = sorted({cid for r in rankings for cid in r}, key=lambda cid: -per_ret[cid].get(key, 0.0))
             ordered = [(cid, per_ret[cid].get(key, 0.0)) for cid in merged]
 
-        candidates = ordered[: (pool if use_rerank else top_k)]
+        # Fetch a few extra candidates so near-duplicates can be dropped without losing top_k.
+        candidates = ordered[: (pool if use_rerank else min(len(ordered), top_k * 3))]
         records = self.store.get_chunks([cid for cid, _ in candidates])
         candidates = [(cid, s) for cid, s in candidates if cid in records]
 
@@ -137,7 +141,8 @@ class SearchService:
 
         lang_of = {c.name: c.language for c in collections}
         hits: list[SearchHit] = []
-        for rank, (cid, score) in enumerate(candidates[:top_k], start=1):
+        candidates = select_diverse(candidates, records, top_k)
+        for rank, (cid, score) in enumerate(candidates, start=1):
             rec = records[cid]
             hits.append(
                 SearchHit(
@@ -172,3 +177,33 @@ class SearchService:
 def _rerank_text(title: str | None, section: str | None, text: str) -> str:
     head = " — ".join(x for x in (title, section) if x)
     return f"{head}\n{text}" if head else text
+
+
+def overlaps(a: ChunkRecord, b: ChunkRecord, threshold: float = 0.5) -> bool:
+    """True if two chunks share at least ``threshold`` of the shorter one's text.
+
+    Overlapping chunks from the same page (or Markdown section) carry the same
+    passage twice; showing both wastes a slot in the top-k.
+    """
+    if (a.document_id, a.page, a.section) != (b.document_id, b.page, b.section):
+        return False
+    inter = min(a.char_end, b.char_end) - max(a.char_start, b.char_start)
+    if inter <= 0:
+        return False
+    shorter = min(a.char_end - a.char_start, b.char_end - b.char_start)
+    return inter >= threshold * max(1, shorter)
+
+
+def select_diverse(
+    ranked: Sequence[tuple[str, float]], records: dict[str, ChunkRecord], k: int
+) -> list[tuple[str, float]]:
+    """Keep the ranking order but skip chunks that mostly repeat a higher-ranked one."""
+    kept: list[tuple[str, float]] = []
+    for cid, score in ranked:
+        rec = records[cid]
+        if any(overlaps(rec, records[other]) for other, _ in kept):
+            continue
+        kept.append((cid, score))
+        if len(kept) == k:
+            break
+    return kept

@@ -228,6 +228,7 @@ def serve(
         if applied:
             console.print(f"[green]✓[/] applied migrations: {', '.join(applied)}")
     api = create_app(cw, mount_mcp=not no_mcp)
+    cw.preload()
     console.print(f"[green]citewell[/] REST: http://{settings.host}:{settings.port}/docs")
     if not no_mcp:
         console.print(f"[green]citewell[/] MCP : http://{settings.host}:{settings.port}/mcp")
@@ -254,6 +255,7 @@ def mcp(
     except Exception as exc:
         raise _fail(str(exc)) from exc
     server = build_server(cw)
+    cw.preload()
     try:
         if transport == "stdio":
             server.run("stdio")

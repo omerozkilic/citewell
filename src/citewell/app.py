@@ -109,6 +109,25 @@ class Citewell:
     def ingest(self) -> IngestService:
         return IngestService(self.store, self.embedder, self.settings)
 
+    def preload(self) -> threading.Thread | None:
+        """Warm up the embedding model (and the reranker if it is on by default) in the background."""
+        s = self.settings
+        if not s.preload_models or s.embedding_backend == "hash":
+            return None
+
+        def run() -> None:
+            try:
+                _ = self.embedder
+                if s.rerank_by_default:
+                    _ = self.reranker
+                log.info("models loaded")
+            except Exception:
+                log.warning("model preload failed; models will load on first use", exc_info=True)
+
+        thread = threading.Thread(target=run, name="citewell-preload", daemon=True)
+        thread.start()
+        return thread
+
     def close(self) -> None:
         if "pool" in self.__dict__:
             self.pool.close()

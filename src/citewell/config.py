@@ -79,6 +79,12 @@ class Settings(BaseSettings):
         description="Extra Host headers accepted by the HTTP MCP endpoint (DNS-rebinding protection).",
     )
 
+    preload_models: bool = Field(
+        default=True,
+        description="Load the embedding model in the background when a server starts, "
+        "so the first query does not wait for it.",
+    )
+
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     @field_validator("chunk_overlap")
