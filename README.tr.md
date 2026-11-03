@@ -68,8 +68,20 @@ Claude Desktop, Cursor yapılandırmaları, CLI, REST API ve değerlendirme içi
 citewell eval examples/eval/tr-sample.jsonl -k 5 -r vector,keyword,hybrid,hybrid+rerank --markdown
 ```
 
-35 soruluk örnek set bir duman testidir, benchmark değildir. Gerçek Türkçe dokümanlardan oluşan eval
-setleri katkısı çok değerlidir.
+**İlk sonuçlar — İş Kanunu (4857):** mevzuat.gov.tr'deki resmi PDF üzerinde 20 doğal dilde soru;
+doğru maddenin doğru sayfası gelirse isabet sayılır. `bge-m3` + `bge-reranker-v2-m3`, Apple Silicon:
+
+| Run | Recall@5 | MRR@5 | Hit@5 | Page hit@5 | p50 ms | p95 ms |
+|---|---:|---:|---:|---:|---:|---:|
+| vector | 1.000 | 0.885 | 1.000 | 1.000 | 45 | 95 |
+| keyword | 0.850 | 0.614 | 0.850 | 0.850 | 8 | 11 |
+| **hybrid** (default) | **1.000** | **0.893** | **1.000** | **1.000** | **48** | **54** |
+| hybrid + rerank | 1.000 | 0.950 | 1.000 | 1.000 | 3259 | 3771 |
+
+Hibrit arama tüm sorularda doğru madde ve sayfayı ilk 5'te buluyor; reranker sıralamayı iyileştiriyor
+ama dizüstü bilgisayarda sorgu başına ~3 sn eklediği için isteğe bağlı. Küçük ve tek alanlı bir settir
+(20 soru, tek kanun) — ilk veri noktasıdır. Daha büyük, bağımsız Türkçe eval seti katkıları çok
+değerlidir.
 
 ## Katkı
 

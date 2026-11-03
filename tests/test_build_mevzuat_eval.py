@@ -47,6 +47,10 @@ def test_main_builds_dataset(tmp_path: Path, monkeypatch) -> None:  # type: igno
     c.drawString(72, 750, "Madde 16 - Baska bir hukum.")
     c.showPage()
     c.save()
+    c = canvas.Canvas(str(pdf_dir / "KARARNAMELER 30-09-2021.pdf"))  # a date, not a law number
+    c.drawString(72, 750, "Madde 1 - Baska bir metin.")
+    c.showPage()
+    c.save()
     questions = tmp_path / "q.jsonl"
     questions.write_text(
         "// comment\n"

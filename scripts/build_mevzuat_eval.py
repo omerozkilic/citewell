@@ -65,30 +65,37 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("-c", "--collection", default="mevzuat")
     args = ap.parse_args(argv)
 
+    questions = [
+        json.loads(line)
+        for line in args.questions.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.strip().startswith("//")
+    ]
+    wanted = {str(q["law"]) for q in questions}
+
     laws: dict[str, tuple[str, dict[int, tuple[int, int]]]] = {}
     for path, source in iter_files([args.pdf_dir]):
         if path.suffix.lower() != ".pdf":
             continue
-        m = LAW_NO_RE.findall(path.stem)
-        if not m:
+        # Only law numbers used by the questions count, so dates like "30-09-2021" are ignored.
+        found = [n for n in LAW_NO_RE.findall(path.stem) if n in wanted]
+        if not found:
+            print(
+                f"{source}: skipped (no law number from the question set in the file name)", file=sys.stderr
+            )
             continue
-        law = m[-1]
+        law = found[-1]
         doc = load_file(path, source)
         laws[law] = (source, article_starts(doc.pages))
         print(f"{source}: law {law}, {len(laws[law][1])} articles found", file=sys.stderr)
 
     written = skipped = 0
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    with args.questions.open(encoding="utf-8") as fh, args.output.open("w", encoding="utf-8") as out:
-        for line in fh:
-            line = line.strip()
-            if not line or line.startswith("//"):
-                continue
-            q = json.loads(line)
-            if q["law"] not in laws:
+    with args.output.open("w", encoding="utf-8") as out:
+        for q in questions:
+            if str(q["law"]) not in laws:
                 skipped += 1
                 continue
-            source, starts = laws[q["law"]]
+            source, starts = laws[str(q["law"])]
             pages = article_pages(starts, int(q["article"]))
             if not pages:
                 print(f"  ! {q['id']}: Madde {q['article']} not found in {source}", file=sys.stderr)

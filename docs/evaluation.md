@@ -43,10 +43,23 @@ fusion) on every push; it says nothing about semantic quality.
 
 ## Benchmarks
 
-The bundled 35-question set is small and was written alongside the corpus — treat it as a smoke
-test. Results with `BAAI/bge-m3` and `bge-reranker-v2-m3` on a larger, independent Turkish dataset
-will be published here. Contributions of real-world eval sets (with permissively licensed documents)
-are very welcome.
+The bundled 35-question handbook set was written alongside the corpus — treat it as a smoke test.
+
+### Turkish Labour Law (4857) — 2026-11-03
+
+20 questions from `examples/eval/mevzuat-questions.jsonl`, official mevzuat.gov.tr PDF (121
+articles), `BAAI/bge-m3` + `BAAI/bge-reranker-v2-m3`, chunk size 1000 / overlap 150, k = 5,
+Apple Silicon (MPS), latency measured after model warm-up:
+
+| Run | Recall@5 | MRR@5 | Hit@5 | Page hit@5 | p50 ms | p95 ms |
+|---|---:|---:|---:|---:|---:|---:|
+| vector | 1.000 | 0.885 | 1.000 | 1.000 | 45 | 95 |
+| keyword | 0.850 | 0.614 | 0.850 | 0.850 | 8 | 11 |
+| **hybrid** (default) | **1.000** | **0.893** | **1.000** | **1.000** | **48** | **54** |
+| hybrid + rerank | 1.000 | 0.950 | 1.000 | 1.000 | 3259 | 3771 |
+
+Small and single-domain; KVKK and Constitution questions were not included in this run.
+Contributions of real-world eval sets (with permissively licensed documents) are very welcome.
 
 ## Turkish legislation set
 

@@ -202,8 +202,29 @@ Metrics: **Recall@k**, **MRR@k**, **Hit@k**, **Page hit@k** (exact page), **p50/
 CI runs the sample set end-to-end on every push (with the lexical test backends) and fails below a
 recall floor; see [docs/evaluation.md](docs/evaluation.md).
 
-> **Benchmarks with `bge-m3` are pending** — the 35-query sample set is a smoke test, not a
-> benchmark. Contributions of larger, real Turkish eval sets are very welcome.
+### First results: Turkish Labour Law (İş Kanunu, 4857)
+
+20 natural-language questions from [`examples/eval/mevzuat-questions.jsonl`](examples/eval/mevzuat-questions.jsonl)
+against the official PDF from mevzuat.gov.tr (121 articles). A hit counts only if it lands on a page
+of the right article. `BAAI/bge-m3` + `bge-reranker-v2-m3`, default chunking, Apple Silicon (MPS),
+models already loaded:
+
+| Run | Recall@5 | MRR@5 | Hit@5 | Page hit@5 | p50 ms | p95 ms |
+|---|---:|---:|---:|---:|---:|---:|
+| vector | 1.000 | 0.885 | 1.000 | 1.000 | 45 | 95 |
+| keyword | 0.850 | 0.614 | 0.850 | 0.850 | 8 | 11 |
+| **hybrid** (default) | **1.000** | **0.893** | **1.000** | **1.000** | **48** | **54** |
+| hybrid + rerank | 1.000 | 0.950 | 1.000 | 1.000 | 3259 | 3771 |
+
+- Every question finds the right article **and page** in the top 5 with hybrid search; the right
+  passage is usually ranked first or second (MRR 0.89).
+- Dense retrieval does the heavy lifting on paraphrased questions; keyword search alone misses 15 %.
+- The cross-encoder lifts MRR to 0.95 but costs ~3 s per query on a laptop, so it is opt-in
+  (`--rerank` / `rerank: true`).
+
+> Small and single-domain (20 questions, one law, written by the maintainers) — a first data point,
+> not a leaderboard. Reproduce it with [docs/evaluation.md](docs/evaluation.md#turkish-legislation-set);
+> larger independent Turkish eval sets are very welcome.
 
 ## Configuration
 
