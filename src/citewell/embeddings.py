@@ -12,7 +12,8 @@ from __future__ import annotations
 import hashlib
 import logging
 import threading
-from typing import Protocol, runtime_checkable
+from collections.abc import Callable
+from typing import Any, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -22,6 +23,33 @@ from citewell.text import tokenize
 log = logging.getLogger(__name__)
 
 Vector = npt.NDArray[np.float32]
+M = TypeVar("M")
+
+
+def load_cached_first(factory: Callable[..., M], model_name: str, **kwargs: Any) -> M:
+    """Load a Hugging Face model from the local cache without touching the network.
+
+    Only when the model is not cached yet do we fall back to downloading it. This keeps
+    every query fully offline after `citewell models download`, even without
+    ``HF_HUB_OFFLINE=1``.
+    """
+    _quiet_model_libraries()
+    try:
+        return factory(model_name, local_files_only=True, **kwargs)
+    except Exception as exc:  # not cached (OSError / LocalEntryNotFoundError / ValueError …)
+        log.info("%s is not in the local cache (%s); downloading it", model_name, type(exc).__name__)
+        return factory(model_name, **kwargs)
+
+
+def _quiet_model_libraries() -> None:
+    """Silence per-load progress bars and chatter from transformers (stderr stays readable)."""
+    try:
+        from transformers.utils import logging as hf_logging
+
+        hf_logging.disable_progress_bar()
+        hf_logging.set_verbosity_error()
+    except Exception:  # pragma: no cover - transformers missing or API changed
+        log.debug("could not configure transformers logging", exc_info=True)
 
 
 @runtime_checkable
@@ -94,10 +122,14 @@ class SentenceTransformerEmbedder:
                 "pip install 'citewell[models]' (or set CITEWELL_EMBEDDING_BACKEND=hash for testing)."
             ) from exc
         log.info("loading embedding model %s", model_name)
-        self._model = SentenceTransformer(model_name, device=device)
+        self._model = load_cached_first(SentenceTransformer, model_name, device=device)
         self._model.max_seq_length = max_seq_length
         self.name = model_name
-        actual = int(self._model.get_sentence_embedding_dimension() or 0)
+        get_dim = (
+            getattr(self._model, "get_embedding_dimension", None)
+            or self._model.get_sentence_embedding_dimension
+        )
+        actual = int(get_dim() or 0)
         if dim is not None and actual and actual != dim:
             raise ValueError(
                 f"{model_name} produces {actual}-d vectors but CITEWELL_EMBEDDING_DIM={dim}. "

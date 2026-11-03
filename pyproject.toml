@@ -105,7 +105,7 @@ plugins = ["pydantic.mypy"]
 mypy_path = "src"
 
 [[tool.mypy.overrides]]
-module = ["pgvector.*", "sentence_transformers.*", "docx.*", "pypdf.*", "reportlab.*", "torch.*"]
+module = ["pgvector.*", "sentence_transformers.*", "transformers.*", "docx.*", "pypdf.*", "reportlab.*", "torch.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

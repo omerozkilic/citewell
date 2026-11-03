@@ -11,7 +11,7 @@ from citewell.rerank import CrossEncoderReranker, build_reranker
 
 
 class _FakeST:
-    def __init__(self, name: str, device: str | None = None) -> None:
+    def __init__(self, name: str, device: str | None = None, local_files_only: bool = False) -> None:
         self.name = name
         self.max_seq_length = 0
         self.seen: list[str] = []
@@ -25,7 +25,9 @@ class _FakeST:
 
 
 class _FakeCE:
-    def __init__(self, name: str, device: str | None = None, max_length: int = 512) -> None:
+    def __init__(
+        self, name: str, device: str | None = None, max_length: int = 512, local_files_only: bool = False
+    ) -> None:
         self.name = name
 
     def predict(self, pairs: list[tuple[str, str]], **_: object) -> list[float]:
@@ -63,3 +65,21 @@ def test_cross_encoder_sigmoid(fake_st: None) -> None:
     assert scores[0] == pytest.approx(0.5)
     assert 0.5 < scores[1] < 1.0
     assert r.score("q", []) == []
+
+
+def test_load_cached_first_prefers_cache_then_downloads() -> None:
+    from citewell.embeddings import load_cached_first
+
+    calls: list[dict[str, object]] = []
+
+    def factory(name: str, **kw: object) -> str:
+        calls.append(kw)
+        if kw.get("local_files_only") and name == "missing":
+            raise OSError("not cached")
+        return name
+
+    assert load_cached_first(factory, "cached", device="cpu") == "cached"
+    assert calls == [{"local_files_only": True, "device": "cpu"}]
+    calls.clear()
+    assert load_cached_first(factory, "missing", device="cpu") == "missing"
+    assert calls == [{"local_files_only": True, "device": "cpu"}, {"device": "cpu"}]

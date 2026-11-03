@@ -48,6 +48,11 @@ def _setup_logging(settings: Settings) -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         stream=sys.stderr,
     )
+    if settings.log_level != "DEBUG":
+        # HTTP request logs from the model hub and platform notes from torch are noise here.
+        for name in ("httpx", "httpx2", "httpcore", "urllib3", "huggingface_hub", "sentence_transformers"):
+            logging.getLogger(name).setLevel(logging.WARNING)
+        logging.getLogger("torch.distributed.elastic").setLevel(logging.ERROR)
 
 
 def _citewell() -> Citewell:

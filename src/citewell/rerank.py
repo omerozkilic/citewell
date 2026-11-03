@@ -7,6 +7,7 @@ import math
 import threading
 from typing import Protocol, runtime_checkable
 
+from citewell.embeddings import load_cached_first
 from citewell.text import tokenize
 
 log = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ class CrossEncoderReranker:
         except ImportError as exc:  # pragma: no cover - optional extra
             raise RuntimeError("Reranking needs the 'models' extra: pip install 'citewell[models]'") from exc
         log.info("loading reranker %s", model_name)
-        self._model = CrossEncoder(model_name, device=device, max_length=max_length)
+        self._model = load_cached_first(CrossEncoder, model_name, device=device, max_length=max_length)
         self.name = model_name
         self._lock = threading.Lock()
 
