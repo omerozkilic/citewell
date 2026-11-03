@@ -1,0 +1,39 @@
+// Turkish legislation questions. Pages are NOT stored here: they depend on the PDF version
+// downloaded from mevzuat.gov.tr. Build a runnable dataset with:
+//   uv run python scripts/build_mevzuat_eval.py data/mevzuat -o data/mevzuat-eval.jsonl
+// law = law number (4857 İş Kanunu, 6698 KVKK, 2709 Anayasa); article = "Madde N".
+{"id": "is01", "law": "4857", "article": 15, "query": "Deneme süresi en fazla ne kadar olabilir?", "tags": ["exact"]}
+{"id": "is02", "law": "4857", "article": 53, "query": "Yıllık ücretli izin süreleri kıdeme göre kaç gün?", "tags": ["exact"]}
+{"id": "is03", "law": "4857", "article": 53, "query": "On yıldır çalışan biri en az kaç gün yıllık izin alır?", "tags": ["reasoning"]}
+{"id": "is04", "law": "4857", "article": 56, "query": "Yıllık izin parçalara bölünebilir mi?", "tags": ["paraphrase"]}
+{"id": "is05", "law": "4857", "article": 63, "query": "Haftalık çalışma süresi en fazla kaç saat olabilir?", "tags": ["exact"]}
+{"id": "is06", "law": "4857", "article": 41, "query": "Fazla mesai yapan işçiye ücret nasıl ödenir?", "tags": ["paraphrase"]}
+{"id": "is07", "law": "4857", "article": 17, "query": "İşten çıkarmadan önce kaç hafta önceden bildirim yapılmalı?", "tags": ["paraphrase"]}
+{"id": "is08", "law": "4857", "article": 24, "query": "İşçi hangi durumlarda sözleşmeyi hemen feshedebilir?", "tags": ["paraphrase"]}
+{"id": "is09", "law": "4857", "article": 25, "query": "İşveren hangi hallerde işçiyi bildirimsiz işten çıkarabilir?", "tags": ["paraphrase"]}
+{"id": "is10", "law": "4857", "article": 18, "query": "İş güvencesinden yararlanmak için kaç işçi ve ne kadar kıdem gerekir?", "tags": ["exact"]}
+{"id": "is11", "law": "4857", "article": 20, "query": "Fesih bildirimine itiraz süresi ve usulü nedir?", "tags": ["exact"]}
+{"id": "is12", "law": "4857", "article": 68, "query": "Günlük çalışmada ara dinlenmesi ne kadar olmalı?", "tags": ["exact"]}
+{"id": "is13", "law": "4857", "article": 69, "query": "Gece çalışması en fazla kaç saat sürebilir?", "tags": ["exact"]}
+{"id": "is14", "law": "4857", "article": 71, "query": "Çocuk işçi çalıştırma yaşı kaçtır?", "tags": ["paraphrase"]}
+{"id": "is15", "law": "4857", "article": 74, "query": "Doğum öncesi ve sonrası analık izni kaç haftadır?", "tags": ["paraphrase"]}
+{"id": "is16", "law": "4857", "article": 46, "query": "Hafta tatili ücreti nasıl hak edilir?", "tags": ["exact"]}
+{"id": "is17", "law": "4857", "article": 32, "query": "Maaş en geç hangi aralıklarla ödenmelidir?", "tags": ["paraphrase"]}
+{"id": "is18", "law": "4857", "article": 30, "query": "Elli işçiden fazla çalıştıran işveren kaç engelli çalıştırmak zorunda?", "tags": ["reasoning"]}
+{"id": "is19", "law": "4857", "article": 13, "query": "Kısmi süreli iş sözleşmesi nedir?", "tags": ["exact"]}
+{"id": "is20", "law": "4857", "article": 14, "query": "Çağrı üzerine çalışma nasıl düzenlenir?", "tags": ["exact"]}
+{"id": "kv01", "law": "6698", "article": 3, "query": "Açık rıza ne demektir?", "tags": ["exact"]}
+{"id": "kv02", "law": "6698", "article": 6, "query": "Özel nitelikli kişisel veriler nelerdir?", "tags": ["exact"]}
+{"id": "kv03", "law": "6698", "article": 5, "query": "Kişisel veriler hangi şartlarda açık rıza olmadan işlenebilir?", "tags": ["reasoning"]}
+{"id": "kv04", "law": "6698", "article": 7, "query": "Kişisel veriler ne zaman silinmeli veya yok edilmeli?", "tags": ["paraphrase"]}
+{"id": "kv05", "law": "6698", "article": 9, "query": "Kişisel veriler yurt dışına nasıl aktarılabilir?", "tags": ["exact"]}
+{"id": "kv06", "law": "6698", "article": 10, "query": "Veri sorumlusunun aydınlatma yükümlülüğü nedir?", "tags": ["exact"]}
+{"id": "kv07", "law": "6698", "article": 11, "query": "İlgili kişinin hakları nelerdir?", "tags": ["exact"]}
+{"id": "kv08", "law": "6698", "article": 12, "query": "Veri ihlali olursa kime bildirim yapılır?", "tags": ["paraphrase"]}
+{"id": "kv09", "law": "6698", "article": 13, "query": "Veri sorumlusuna yapılan başvuru kaç gün içinde sonuçlandırılır?", "tags": ["exact"]}
+{"id": "kv10", "law": "6698", "article": 16, "query": "Veri sorumluları sicili nedir, kimler kaydolmalı?", "tags": ["exact"]}
+{"id": "an01", "law": "2709", "article": 101, "query": "Cumhurbaşkanı kaç yıllığına ve en fazla kaç kez seçilebilir?", "tags": ["exact"]}
+{"id": "an02", "law": "2709", "article": 76, "query": "Milletvekili seçilebilmek için kaç yaşında olmak gerekir?", "tags": ["paraphrase"]}
+{"id": "an03", "law": "2709", "article": 3, "query": "Türkiye'nin resmi dili ve başkenti nedir?", "tags": ["exact"]}
+{"id": "an04", "law": "2709", "article": 42, "query": "İlköğretim zorunlu ve parasız mıdır?", "tags": ["exact"]}
+{"id": "an05", "law": "2709", "article": 20, "query": "Kişisel verilerin korunmasını isteme hakkı Anayasada nerede düzenlenir?", "tags": ["cross-reference"]}

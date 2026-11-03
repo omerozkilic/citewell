@@ -1,0 +1,66 @@
+site_name: Citewell
+site_description: Citation-grounded document memory for AI assistants. Offline, MCP-native, Turkish-ready.
+site_url: https://omerozkilic.github.io/citewell/
+repo_url: https://github.com/omerozkilic/citewell
+repo_name: omerozkilic/citewell
+edit_uri: edit/main/docs/
+copyright: MIT License · Ömer Özkılıç
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle: { icon: material/weather-night, name: Dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle: { icon: material/weather-sunny, name: Light mode }
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc: { permalink: true }
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed: { alternate_style: true }
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Connect an assistant: mcp-clients.md
+  - Usage:
+      - CLI: cli.md
+      - REST API: rest-api.md
+      - Configuration: configuration.md
+  - Concepts:
+      - Architecture: architecture.md
+      - Turkish support: turkish.md
+      - Evaluation: evaluation.md
+  - Architecture decisions:
+      - adr/index.md
+      - adr/0001-record-architecture-decisions.md
+      - adr/0002-no-llm-in-core.md
+      - adr/0003-postgresql-pgvector.md
+      - adr/0004-hybrid-search-rrf.md
+      - adr/0005-local-multilingual-models.md
+      - adr/0006-page-aware-chunking.md
+      - adr/0007-read-only-mcp.md
+      - adr/template.md
+  - Roadmap: roadmap.md
