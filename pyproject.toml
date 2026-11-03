@@ -52,7 +52,7 @@ Issues = "https://github.com/omerozkilic/citewell/issues"
 Changelog = "https://github.com/omerozkilic/citewell/blob/main/CHANGELOG.md"
 
 [project.scripts]
-citewell = "citewell.cli:app"
+citewell = "citewell.cli:run"
 
 [dependency-groups]
 dev = [

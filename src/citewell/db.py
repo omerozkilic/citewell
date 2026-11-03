@@ -6,6 +6,7 @@ import logging
 from importlib import resources
 
 import psycopg
+import psycopg.conninfo
 from pgvector.psycopg import register_vector
 from psycopg_pool import ConnectionPool
 
@@ -18,6 +19,35 @@ class SchemaMismatchError(RuntimeError):
     pass
 
 
+class DatabaseUnavailableError(RuntimeError):
+    pass
+
+
+def describe_url(url: str) -> str:
+    """``host:port/dbname`` without credentials, for error messages."""
+    try:
+        info = psycopg.conninfo.conninfo_to_dict(url)
+    except psycopg.ProgrammingError:
+        return "<invalid database URL>"
+    host = info.get("host") or "localhost"
+    return f"{host}:{info.get('port') or 5432}/{info.get('dbname') or ''}"
+
+
+def check_connection(url: str, timeout: int = 5) -> None:
+    """Fail fast with an actionable message instead of a 30 s pool retry loop."""
+    try:
+        with psycopg.connect(url, connect_timeout=timeout):
+            pass
+    except psycopg.OperationalError as exc:
+        lines = [ln.strip() for ln in str(exc).splitlines() if ln.strip()] or [type(exc).__name__]
+        reason = next((ln.rsplit("failed: ", 1)[-1] for ln in lines if "failed: " in ln), lines[-1])
+        raise DatabaseUnavailableError(
+            f"cannot connect to PostgreSQL at {describe_url(url)} ({reason}).\n"
+            "Is the database running? With Docker: `docker compose up -d db` "
+            "(check with `docker compose ps`). Otherwise set CITEWELL_DATABASE_URL."
+        ) from exc
+
+
 def _configure(conn: psycopg.Connection) -> None:
     try:
         register_vector(conn)
@@ -28,6 +58,7 @@ def _configure(conn: psycopg.Connection) -> None:
 
 
 def create_pool(url: str, min_size: int = 1, max_size: int = 8) -> ConnectionPool:
+    check_connection(url)
     pool = ConnectionPool(
         url,
         min_size=min_size,

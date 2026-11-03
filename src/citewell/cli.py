@@ -513,5 +513,16 @@ def doctor() -> None:
         raise typer.Exit(1)
 
 
+def run() -> None:
+    """Console entry point: turn expected operational errors into one-line messages."""
+    from citewell.db import DatabaseUnavailableError, SchemaMismatchError
+
+    try:
+        app(standalone_mode=True)
+    except (DatabaseUnavailableError, SchemaMismatchError) as exc:
+        console.print(f"[bold red]error:[/] {exc}")
+        raise SystemExit(1) from None
+
+
 if __name__ == "__main__":  # pragma: no cover
-    app()
+    run()
