@@ -6,7 +6,7 @@
 
 ARG PYTHON_VERSION=3.12
 
-FROM ghcr.io/astral-sh/uv:0.11.32 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
 
 # --------------------------------------------------------------------------- builder
 FROM python:${PYTHON_VERSION}-slim AS builder
