@@ -15,6 +15,7 @@ from psycopg_pool import ConnectionPool
 from citewell import db
 from citewell.config import Settings, get_settings
 from citewell.embeddings import Embedder, build_embedder
+from citewell.hub import prefer_offline
 from citewell.ingest import IngestService
 from citewell.rerank import Reranker, build_reranker
 from citewell.search import SearchService
@@ -58,11 +59,23 @@ class Citewell:
 
     # ------------------------------------------------------------------ models
 
+    def _prefer_offline(self) -> None:
+        """Switch the Hugging Face client to offline mode when every needed model is cached."""
+        s = self.settings
+        needed = []
+        if s.embedding_backend == "sentence-transformers":
+            needed.append(s.embedding_model)
+        if s.reranker_backend == "sentence-transformers":
+            needed.append(s.reranker_model)
+        if needed:
+            prefer_offline(needed)
+
     @property
     def embedder(self) -> Embedder:
         if self._embedder is None:
             with self._lock:
                 if self._embedder is None:
+                    self._prefer_offline()
                     s = self.settings
                     self._embedder = build_embedder(
                         s.embedding_backend,
@@ -79,6 +92,7 @@ class Citewell:
         if not self._reranker_loaded:
             with self._lock:
                 if not self._reranker_loaded:
+                    self._prefer_offline()
                     s = self.settings
                     self._reranker = build_reranker(s.reranker_backend, s.reranker_model, s.embedding_device)
                     self._reranker_loaded = True

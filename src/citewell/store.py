@@ -164,7 +164,7 @@ class Store:
                     doc.title,
                     doc.mime,
                     doc.sha256,
-                    max(page_numbers) if page_numbers else None,
+                    doc.metadata.get("total_pages") or (max(page_numbers) if page_numbers else None),
                     Jsonb(doc.metadata),
                 ),
             ).fetchone()
@@ -200,6 +200,7 @@ class Store:
     def list_documents(self, collection: str | None = None) -> list[DocumentInfo]:
         sql = """
             SELECT d.id, col.name AS collection, d.source, d.title, d.mime, d.sha256, d.page_count,
+                   (d.metadata->>'pages_without_text')::int AS pages_without_text,
                    d.ingested_at, (SELECT count(*) FROM chunks c WHERE c.document_id = d.id) AS chunk_count
             FROM documents d JOIN collections col ON col.id = d.collection_id
         """

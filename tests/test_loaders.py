@@ -85,3 +85,22 @@ def test_iter_files_relative_sources_and_hidden(tmp_path: Path) -> None:
     assert [src for _, src in iter_files([tmp_path / "a.txt"])] == ["a.txt"]
     with pytest.raises(FileNotFoundError):
         list(iter_files([tmp_path / "yok"]))
+
+
+def test_pdf_pages_without_text_are_counted(tmp_path: Path) -> None:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+
+    pdf = tmp_path / "kismen-taranmis.pdf"
+    c = canvas.Canvas(str(pdf), pagesize=A4)
+    c.drawString(72, 750, "Birinci sayfa metni.")
+    c.showPage()
+    c.rect(72, 600, 200, 100, fill=1)  # an "image-only" page: no text layer
+    c.showPage()
+    c.drawString(72, 750, "Ucuncu sayfa metni.")
+    c.showPage()
+    c.save()
+    doc = load_file(pdf)
+    assert [p.number for p in doc.pages] == [1, 3]
+    assert doc.metadata["total_pages"] == 3
+    assert doc.metadata["pages_without_text"] == 1

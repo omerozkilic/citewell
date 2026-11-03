@@ -50,6 +50,8 @@ class IngestService:
             overlap=self.settings.chunk_overlap,
             min_size=self.settings.min_chunk_size,
         )
+        missing = int(doc.metadata.get("pages_without_text") or 0)
+        total = int(doc.metadata.get("total_pages") or 0)
         if not chunks:
             return IngestResult(
                 source=doc.source,
@@ -59,8 +61,19 @@ class IngestService:
         vectors = self.embedder.embed_documents([embedding_text(doc, c) for c in chunks])
         doc_id = self.store.replace_document(collection, doc, chunks, vectors)
         pages = len({c.page for c in chunks if c.page is not None})
+        warning = None
+        if missing:
+            warning = (
+                f"{missing}/{total} pages have no extractable text (scanned images?) and are not "
+                "searchable; OCR is not supported yet"
+            )
         return IngestResult(
-            source=doc.source, status="ingested", document_id=doc_id, chunks=len(chunks), pages=pages
+            source=doc.source,
+            status="ingested",
+            document_id=doc_id,
+            chunks=len(chunks),
+            pages=pages,
+            message=warning,
         )
 
     def ingest_bytes(

@@ -33,10 +33,17 @@ def load_cached_first(factory: Callable[..., M], model_name: str, **kwargs: Any)
     every query fully offline after `citewell models download`, even without
     ``HF_HUB_OFFLINE=1``.
     """
+    from citewell.hub import offline_requested
+
     _quiet_model_libraries()
     try:
         return factory(model_name, local_files_only=True, **kwargs)
     except Exception as exc:  # not cached (OSError / LocalEntryNotFoundError / ValueError …)
+        if offline_requested():
+            raise RuntimeError(
+                f"{model_name} could not be loaded from the local model cache ({type(exc).__name__}: {exc}). "
+                "Run `citewell models download` once with internet access."
+            ) from exc
         log.info("%s is not in the local cache (%s); downloading it", model_name, type(exc).__name__)
         return factory(model_name, **kwargs)
 

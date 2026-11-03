@@ -52,6 +52,9 @@ class DocumentInfo(BaseModel):
     mime: str | None
     sha256: str
     page_count: int | None
+    pages_without_text: int | None = Field(
+        default=None, description="PDF pages with no text layer (scanned?) — not searchable."
+    )
     chunk_count: int = 0
     ingested_at: datetime | None = None
 

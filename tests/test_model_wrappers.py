@@ -67,8 +67,11 @@ def test_cross_encoder_sigmoid(fake_st: None) -> None:
     assert r.score("q", []) == []
 
 
-def test_load_cached_first_prefers_cache_then_downloads() -> None:
+def test_load_cached_first_prefers_cache_then_downloads(monkeypatch: pytest.MonkeyPatch) -> None:
     from citewell.embeddings import load_cached_first
+
+    monkeypatch.delenv("HF_HUB_OFFLINE", raising=False)
+    monkeypatch.delenv("TRANSFORMERS_OFFLINE", raising=False)
 
     calls: list[dict[str, object]] = []
 

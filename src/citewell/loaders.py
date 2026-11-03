@@ -14,7 +14,7 @@ import re
 from collections.abc import Callable, Iterable, Iterator
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from citewell.models import LoadedDocument, Page
 from citewell.text import clean_text, reflow
@@ -238,13 +238,19 @@ def load_bytes(data: bytes, source: str, mime: str | None = None) -> LoadedDocum
     mime = mime or detect_mime(source)
     pages, meta = _LOADERS[mime](data)
     title = meta.pop("title", None) or Path(source).stem.replace("_", " ").replace("-", " ")
+    with_text = [p for p in pages if p.text.strip()]
+    metadata: dict[str, Any] = dict(meta)
+    if mime == "application/pdf":
+        # Pages without a text layer are usually scanned images; OCR is not supported yet.
+        metadata["total_pages"] = len(pages)
+        metadata["pages_without_text"] = len(pages) - len(with_text)
     return LoadedDocument(
         source=source,
         title=title,
         mime=mime,
         sha256=sha256_bytes(data),
-        pages=[p for p in pages if p.text.strip()],
-        metadata=meta,
+        pages=with_text,
+        metadata=metadata,
     )
 
 

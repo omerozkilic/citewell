@@ -129,8 +129,11 @@ def ingest(
         counts[res.status] = counts.get(res.status, 0) + 1
         total_chunks += res.chunks
         extra = f" {res.chunks} chunks" if res.chunks else ""
-        msg = f" — {res.message}" if res.message else ""
+        warn = res.status == "ingested" and res.message
+        msg = f" — {res.message}" if res.message and not warn else ""
         console.print(f"[{style.get(res.status, 'white')}]{res.status:>9}[/] {res.source}{extra}{msg}")
+        if warn:
+            console.print(f"          [yellow]⚠ {res.message}[/]")
 
     try:
         cw.check_schema()

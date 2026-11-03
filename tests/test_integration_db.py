@@ -348,3 +348,23 @@ def test_cli_ingest_collections_documents(
         assert runner.invoke(app, ["models", "download", "--no-reranker"]).exit_code == 0
     finally:
         config.get_settings.cache_clear()
+
+
+def test_ingest_warns_about_pages_without_text(citewell: Citewell, tmp_path: Any) -> None:
+    from reportlab.pdfgen import canvas
+
+    pdf = tmp_path / "taranmis.pdf"
+    c = canvas.Canvas(str(pdf))
+    c.drawString(72, 750, "Sadece bu sayfada metin var.")
+    c.showPage()
+    for _ in range(3):
+        c.rect(72, 600, 200, 100, fill=1)
+        c.showPage()
+    c.save()
+    res = citewell.ingest.ingest_paths([pdf], collection="scan-test")[0]
+    assert res.status == "ingested"
+    assert res.message is not None and res.message.startswith("3/4 pages have no extractable text")
+    doc = citewell.store.list_documents("scan-test")[0]
+    assert doc.page_count == 4
+    assert doc.pages_without_text == 3
+    citewell.store.delete_collection("scan-test")
