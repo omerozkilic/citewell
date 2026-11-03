@@ -115,3 +115,11 @@ def test_run_eval_metrics() -> None:
     assert "| hybrid |" in md and "Recall@5" in md
     assert report_markdown([]) == ""
     assert rep.summary()["queries"] == 3
+
+
+def test_relevant_pages_list_accepts_any_page() -> None:
+    q = EvalQuery(id="1", query="x", relevant=[RelevantItem(source="k.pdf", pages=[27, 28])])
+    first, recall, _, page_hit = score_query(q, [hit(1, "k.pdf", 3), hit(2, "k.pdf", 28)], k=5)
+    assert first == 2
+    assert recall == 1.0
+    assert page_hit is True

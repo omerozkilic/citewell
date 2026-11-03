@@ -7,7 +7,8 @@ Dataset format (JSON Lines, one query per line)::
      "collection": "default"}
 
 A *relevant item* is a ``(source, page)`` pair; ``page`` may be omitted to mark
-a whole document (or an unpaged format) as relevant.
+a whole document (or an unpaged format) as relevant, and ``pages`` (a list)
+accepts a hit on any of several pages — e.g. a legal article spanning two pages.
 
 Metrics (``k`` = cut-off):
 
@@ -37,8 +38,16 @@ from citewell.search import SearchRequest, SearchService
 
 
 class RelevantItem(BaseModel):
+    """A relevant location. ``pages`` accepts any of several pages (e.g. an article spanning two)."""
+
     source: str
     page: int | None = None
+    pages: list[int] | None = None
+
+    def page_set(self) -> set[int] | None:
+        if self.pages:
+            return set(self.pages)
+        return {self.page} if self.page is not None else None
 
 
 class EvalQuery(BaseModel):
@@ -128,7 +137,8 @@ def load_dataset(path: Path) -> list[EvalQuery]:
 def _matches(hit: SearchHit, item: RelevantItem, use_page: bool = True) -> bool:
     if hit.source != item.source:
         return False
-    return not (use_page and item.page is not None and hit.page != item.page)
+    pages = item.page_set()
+    return not (use_page and pages is not None and hit.page not in pages)
 
 
 def score_query(
@@ -143,7 +153,7 @@ def score_query(
     found = sum(1 for it in q.relevant if any(_matches(h, it) for h in top))
     recall = found / len(q.relevant)
     doc_hit = any(_matches(h, it, use_page=False) for h in top for it in q.relevant)
-    paged = [it for it in q.relevant if it.page is not None]
+    paged = [it for it in q.relevant if it.page_set() is not None]
     page_hit = any(_matches(h, it) for h in top for it in paged) if paged else None
     return first, recall, doc_hit, page_hit
 

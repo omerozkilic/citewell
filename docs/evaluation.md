@@ -47,3 +47,25 @@ The bundled 35-question set is small and was written alongside the corpus — tr
 test. Results with `BAAI/bge-m3` and `bge-reranker-v2-m3` on a larger, independent Turkish dataset
 will be published here. Contributions of real-world eval sets (with permissively licensed documents)
 are very welcome.
+
+## Turkish legislation set
+
+`examples/eval/mevzuat-questions.jsonl` contains 35 questions about the Labour Law (4857), the
+Personal Data Protection Law (KVKK, 6698) and the Constitution (2709). Each question names a law
+and an article instead of a page, because page numbers change whenever mevzuat.gov.tr republishes
+an amended text. Turkish legislation is not protected by copyright (FSEK art. 31), which makes it a
+good basis for a public benchmark.
+
+1. Download the PDFs from mevzuat.gov.tr into one folder (e.g. `data/mevzuat/`); keep the law
+   number in the file name (`1.5.4857.pdf`, `is-kanunu-4857.pdf`, …).
+2. Ingest them and build the dataset for *your* PDF versions. The script finds each
+   `Madde N –` heading with the same extraction Citewell uses and records every page the article
+   spans (`"pages": [27, 28]` — a hit on any of them counts):
+
+```bash
+uv run citewell ingest data/mevzuat -c mevzuat
+uv run python scripts/build_mevzuat_eval.py data/mevzuat -o data/mevzuat-eval.jsonl
+uv run citewell eval data/mevzuat-eval.jsonl -c mevzuat -r vector,keyword,hybrid,hybrid+rerank --markdown
+```
+
+Questions whose law PDF is missing are skipped, so you can start with the Labour Law alone.
