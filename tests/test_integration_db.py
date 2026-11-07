@@ -225,7 +225,13 @@ async def test_mcp_tools_resources_prompts(citewell: Citewell) -> None:
     server = build_server(citewell)
     async with Client(server) as mc:
         tools = {t.name: t for t in (await mc.list_tools()).tools}
-        assert set(tools) == {"search_documents", "get_chunk", "list_collections", "list_documents"}
+        assert set(tools) == {
+            "search_documents",
+            "get_chunk",
+            "list_collections",
+            "list_documents",
+            "verify_quote",
+        }
         assert tools["search_documents"].annotations is not None
         assert tools["search_documents"].annotations.read_only_hint is True
 
@@ -247,6 +253,14 @@ async def test_mcp_tools_resources_prompts(citewell: Citewell) -> None:
         docs = await mc.call_tool("list_documents", {"collection": "handbook-en"})
         assert docs.structured_content is not None
         assert docs.structured_content["documents"][0]["source"] == "on-call-handbook.md"
+
+        checked = await mc.call_tool(
+            "verify_quote", {"quote": first["quote"][:120], "chunk_id": first["chunk_id"]}
+        )
+        assert checked.structured_content is not None
+        assert checked.structured_content["verified"] is True
+        assert tools["verify_quote"].annotations is not None
+        assert tools["verify_quote"].annotations.read_only_hint is True
 
         missing = await mc.call_tool("get_chunk", {"chunk_id": "nope"})
         assert missing.is_error
@@ -374,3 +388,83 @@ def test_preload_is_noop_for_hash_backend(citewell: Citewell) -> None:
     assert citewell.preload() is None
     other = Citewell(make_settings(preload_models=False))
     assert other.preload() is None
+
+
+# ---------------------------------------------------------------------- verify
+
+
+def test_verify_quote_service(citewell: Citewell) -> None:
+    v = citewell.verifier
+    hit = citewell.search.search(SearchRequest(query="Günlük yemek harcırahı", top_k=1)).hits[0]
+
+    exact = v.verify("Günlük yemek harcırahı yurt içinde 750 TL'dir.", chunk_id=hit.chunk_id)
+    assert exact.verified
+    assert exact.match == "exact"
+    assert exact.page == 4
+    assert exact.citation == "calisan-el-kitabi.pdf, s. 4"
+
+    by_source = v.verify("GÜNLÜK YEMEK HARCIRAHI yurt içinde 750 TL'dir", source="calisan-el-kitabi.pdf")
+    assert by_source.verified
+    assert by_source.match == "normalized"
+
+    searched = v.verify(
+        "Parolalar en az 14 karakter uzunluğunda olmalıdır."
+    )  # no hint: searches all collections
+    assert searched.verified
+    assert searched.source == "bilgi-guvenligi-politikasi.md"
+    assert searched.section == "Bilgi Güvenliği Politikası > Parola Kuralları"
+
+    wrong = v.verify("Günlük yemek harcırahı yurt içinde 1.000 TL olarak ödenir.", chunk_id=hit.chunk_id)
+    assert not wrong.verified
+    assert wrong.match in ("fuzzy", "not_found")
+
+    paraphrase = v.verify("Yemek harcırahı yurt içinde günlük 750 TL'dir.", chunk_id=hit.chunk_id)
+    assert not paraphrase.verified
+    assert paraphrase.match == "fuzzy"
+    assert paraphrase.source_text is not None
+    assert "750 TL" in paraphrase.source_text
+
+    missing = v.verify("Şirket her çalışana yılda iki kez ikramiye öder.")
+    assert not missing.verified
+    assert missing.match == "not_found"
+
+    with pytest.raises(ValueError, match="too short"):
+        v.verify("kısa")
+    with pytest.raises(NotFoundError):
+        v.verify("bir şey bir şey", source="yok.pdf")
+
+
+def test_verify_quote_rest_and_cli(client: Any, citewell: Citewell, monkeypatch: pytest.MonkeyPatch) -> None:
+    from typer.testing import CliRunner
+
+    from citewell import config
+    from citewell.cli import app
+
+    r = client.post(
+        "/v1/verify", json={"quote": "Deneme süresi işe başlangıç tarihinden itibaren iki aydır."}
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["verified"] is True
+    assert r.json()["page"] == 1
+
+    s = citewell.settings
+    monkeypatch.setenv("CITEWELL_DATABASE_URL", s.database_url)
+    monkeypatch.setenv("CITEWELL_EMBEDDING_BACKEND", "hash")
+    monkeypatch.setenv("CITEWELL_EMBEDDING_DIM", str(s.embedding_dim))
+    monkeypatch.setenv("CITEWELL_RERANKER_BACKEND", "none")
+    monkeypatch.setenv("CITEWELL_CHUNK_SIZE", str(s.chunk_size))
+    monkeypatch.setenv("CITEWELL_CHUNK_OVERLAP", str(s.chunk_overlap))
+    config.get_settings.cache_clear()
+    try:
+        runner = CliRunner()
+        ok = runner.invoke(
+            app, ["verify", "Ekran, 5 dakika işlem yapılmadığında otomatik olarak kilitlenir."]
+        )
+        assert ok.exit_code == 0, ok.output
+        assert "verified" in ok.stdout
+        bad = runner.invoke(
+            app, ["verify", "Ekran 30 saniye sonra kendiliğinden kapanır ve kilitlenir.", "--json"]
+        )
+        assert bad.exit_code == 4
+    finally:
+        config.get_settings.cache_clear()

@@ -8,6 +8,7 @@ Interactive OpenAPI docs: `/docs`.
 | GET | `/health` | Status, version, database state, embedding model (never requires auth) |
 | POST | `/v1/search` | Body: `query`, `top_k`, `mode`, `collections`, `rerank`, `source_prefix` |
 | GET | `/v1/search?q=…&k=5&mode=hybrid&collection=…` | Same, as a query string |
+| POST | `/v1/verify` | Body: `quote`, optional `chunk_id`, `source`, `collections` — checks a quotation against the source |
 | GET | `/v1/chunks/{chunk_id}?context=1` | Chunk with neighbours |
 | GET | `/v1/collections` | List |
 | POST | `/v1/collections` | `{"name": "hr", "language": "turkish", "description": "…"}` |

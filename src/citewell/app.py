@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import threading
 from functools import cached_property
+from typing import TYPE_CHECKING
 
 from psycopg_pool import ConnectionPool
 
@@ -20,6 +21,9 @@ from citewell.ingest import IngestService
 from citewell.rerank import Reranker, build_reranker
 from citewell.search import SearchService
 from citewell.store import Store
+
+if TYPE_CHECKING:
+    from citewell.verify import QuoteVerifier
 
 log = logging.getLogger(__name__)
 
@@ -108,6 +112,12 @@ class Citewell:
     @property
     def ingest(self) -> IngestService:
         return IngestService(self.store, self.embedder, self.settings)
+
+    @property
+    def verifier(self) -> QuoteVerifier:
+        from citewell.verify import QuoteVerifier
+
+        return QuoteVerifier(self.store, self.search)
 
     def preload(self) -> threading.Thread | None:
         """Warm up the embedding model (and the reranker if it is on by default) in the background."""

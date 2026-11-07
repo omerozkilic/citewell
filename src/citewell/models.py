@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -123,6 +123,38 @@ class ChunkRecord(BaseModel):
     char_start: int
     char_end: int
     text: str
+
+
+def citation_label(source: str, page: int | None, section: str | None) -> str:
+    """Human-readable location used in MCP answers: ``file, s. 12`` or ``file § Section``."""
+    if page is not None:
+        return f"{source}, s. {page}"
+    if section:
+        return f"{source} § {section}"
+    return source
+
+
+class QuoteCheck(BaseModel):
+    """Result of checking a quote against the indexed documents."""
+
+    verified: bool = Field(
+        description="True if the quote occurs in the source (exact, normalized or ellipsis)."
+    )
+    match: Literal["exact", "normalized", "ellipsis", "fuzzy", "not_found"]
+    similarity: float = Field(description="1.0 for verified quotes; character similarity for fuzzy matches.")
+    quote: str
+    source_text: str | None = Field(
+        default=None, description="The exact wording in the document (closest passage if not verified)."
+    )
+    citation: str | None = None
+    source: str | None = None
+    title: str | None = None
+    page: int | None = None
+    section: str | None = None
+    chunk_id: str | None = None
+    collection: str | None = None
+    pages_searched: int = 0
+    note: str
 
 
 class IngestResult(BaseModel):

@@ -197,6 +197,42 @@ def search(
     console.print(f"[dim]{len(resp.hits)} results · mode={resp.mode}{rr} · {resp.took_ms:.0f} ms[/]")
 
 
+# -------------------------------------------------------------------------- verify
+
+
+@app.command()
+def verify(
+    quote: Annotated[str, typer.Argument(help="The quote to check.")],
+    chunk: Annotated[str | None, typer.Option("--chunk", help="chunk_id the quote comes from.")] = None,
+    source: Annotated[str | None, typer.Option("--source", "-s", help="Document path.")] = None,
+    collection: Annotated[
+        list[str] | None, typer.Option("--collection", "-c", help="Repeatable; default: all.")
+    ] = None,
+    as_json: Annotated[bool, typer.Option("--json", help="Print the raw JSON result.")] = False,
+) -> None:
+    """Check that a quote really appears in the indexed documents (exit code 4 if not)."""
+    cw = _citewell()
+    try:
+        cw.check_schema()
+        res = cw.verifier.verify(quote, chunk_id=chunk, source=source, collections=collection)
+    except Exception as exc:
+        raise _fail(str(exc)) from exc
+    finally:
+        cw.close()
+    if as_json:
+        out.print_json(res.model_dump_json())
+    else:
+        icon = "[green]✓ verified[/]" if res.verified else "[red]✗ not verified[/]"
+        out.print(f"{icon} [dim]({res.match}, similarity {res.similarity:.2f})[/]")
+        if res.citation:
+            out.print(f"  [bold]{res.citation}[/]  [dim]{res.chunk_id}[/]")
+        if res.source_text and res.match != "exact":
+            out.print(f"  source: {res.source_text}", highlight=False)
+        console.print(f"[dim]{res.note}[/]")
+    if not res.verified:
+        raise typer.Exit(4)
+
+
 # --------------------------------------------------------------------------- serve
 
 

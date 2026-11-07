@@ -258,6 +258,23 @@ class Store:
             raise NotFoundError(f"chunk not found: {chunk_id_}")
         return rows
 
+    def document_chunks(self, document_id: int) -> list[ChunkRecord]:
+        with self.conn() as conn, conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(_CHUNK_SELECT + " WHERE c.document_id = %s ORDER BY c.ord", (document_id,))
+            return [ChunkRecord(**r) for r in cur.fetchall()]
+
+    def documents_by_source(self, source: str, collections: Sequence[str] | None = None) -> list[int]:
+        sql = """
+            SELECT d.id FROM documents d JOIN collections col ON col.id = d.collection_id
+            WHERE d.source = %(src)s
+        """
+        params: dict[str, Any] = {"src": source}
+        if collections:
+            sql += " AND col.name = ANY(%(cols)s)"
+            params["cols"] = list(collections)
+        with self.conn() as conn:
+            return [int(r[0]) for r in conn.execute(sql + " ORDER BY d.id", params).fetchall()]
+
     # -------------------------------------------------------------- retrievers
 
     def vector_search(
