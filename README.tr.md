@@ -36,8 +36,9 @@ Claude ▸ (citewell.search_documents çağrılır)
   araç çıktısı, resource'lar ve alıntı prompt'u. Tasarım gereği salt okunur.
 - **Hibrit arama** — pgvector (HNSW) + PostgreSQL tam metin araması, Reciprocal Rank Fusion ile
   birleştirme, opsiyonel `bge-reranker-v2-m3`.
-- **Önce Türkçe** — Türkçe kök bulma (`turkish` tsvector), doğru `I/ı` – `İ/i` dönüşümü, cp1254
-  desteği, çok dilli `bge-m3`, Türkçe eval seti.
+- **Önce Türkçe** — Türkçe kök bulma (`turkish` tsvector), doğru `I/ı` – `İ/i` dönüşümü, Türkçe
+  karakter kullanmadan arama (`ogrenci izni` → `öğrenci izni`), cp1254 desteği, çok dilli `bge-m3`,
+  Türkçe eval setleri.
 - **Çevrimdışı ve gizli** — modeller yereldir; tek seferlik indirmeden sonra hiçbir veri makinenizden
   çıkmaz.
 - **Ölçülebilir** — Recall@k, MRR, isabet oranı, sayfa isabeti, p50/p95 gecikme.

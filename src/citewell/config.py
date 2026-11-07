@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     candidate_pool: int = Field(default=40, description="Per-retriever candidates fed into RRF.")
     rrf_k: int = 60
     quote_max_chars: int = 320
+    fold_diacritics: bool = Field(
+        default=True,
+        description="Keyword search ignores diacritics, so 'ogrenci izni' finds 'öğrenci izni'.",
+    )
 
     # --- servers -----------------------------------------------------------
     host: str = "127.0.0.1"

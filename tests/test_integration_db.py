@@ -500,3 +500,35 @@ def test_pending_migrations_are_applied_on_startup(citewell: Citewell) -> None:
     with citewell.store.conn() as conn:
         assert db.pending_migrations(conn) == []
     assert citewell.search.search(SearchRequest(query="parola", top_k=1)).hits
+
+
+def test_search_without_turkish_characters(citewell: Citewell) -> None:
+    q = "ucak biletleri hangi sinifta alinir"  # "uçak biletleri hangi sınıfta alınır"
+    hits = citewell.search.search(SearchRequest(query=q, mode="keyword", top_k=1)).hits
+    assert hits
+    assert (hits[0].source, hits[0].page) == ("calisan-el-kitabi.pdf", 4)
+    assert "Uçak biletleri" in hits[0].quote
+
+    strict = Citewell(make_settings(fold_diacritics=False))
+    try:
+        strict_hits = strict.search.search(
+            SearchRequest(query="sinifinda ucak", mode="keyword", top_k=1)
+        ).hits
+        assert not strict_hits or strict_hits[0].page != 4
+    finally:
+        strict.close()
+
+
+def test_folded_index_backfilled_by_migration(citewell: Citewell) -> None:
+    from citewell import db
+
+    with citewell.store.conn() as conn:
+        before = dict(conn.execute("SELECT id, tsv_folded::text FROM chunks").fetchall())
+        conn.execute("UPDATE chunks SET tsv_folded = NULL")
+        conn.execute("DELETE FROM citewell_migrations WHERE version = 3")
+        conn.commit()
+        assert "0003_folded_search.sql" in db.pending_migrations(conn)
+    citewell.check_schema()
+    with citewell.store.conn() as conn:
+        after = dict(conn.execute("SELECT id, tsv_folded::text FROM chunks").fetchall())
+    assert after == before  # SQL back-fill folds exactly like the Python indexer

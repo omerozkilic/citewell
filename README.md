@@ -46,7 +46,8 @@ Claude ▸ (calls citewell.search_documents)
 - **Hybrid search** — pgvector (HNSW) + PostgreSQL full-text search fused with Reciprocal Rank Fusion,
   optional `bge-reranker-v2-m3` cross-encoder ([ADR-0004](docs/adr/0004-hybrid-search-rrf.md)).
 - **Turkish first** — Turkish stemming (`tsvector` `turkish` config), correct `I/ı` – `İ/i` casing,
-  cp1254 decoding, multilingual `bge-m3` embeddings, a Turkish eval set.
+  search that works without Turkish characters (`ogrenci izni` finds `öğrenci izni`), cp1254
+  decoding, multilingual `bge-m3` embeddings, Turkish eval sets.
 - **Offline & private** — local models; after a one-time download nothing leaves your machine.
 - **Measured** — built-in eval: Recall@k, MRR, hit rate, page hit rate, p50/p95 latency.
 - **One command** — `docker compose up`. PostgreSQL is the only dependency.

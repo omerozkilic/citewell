@@ -97,6 +97,11 @@ jobs:
           uv run citewell eval examples/eval/tr-sample.jsonl \
             -r vector,keyword,hybrid,hybrid+rerank --markdown -o eval-report.json --fail-under 0.8 \
             | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Evaluate (queries typed without Turkish characters)
+        run: |
+          uv run citewell eval examples/eval/tr-sample-ascii.jsonl \
+            -r keyword,hybrid --markdown --fail-under 0.8 \
+            | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: eval-report
