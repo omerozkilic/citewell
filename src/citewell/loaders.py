@@ -61,6 +61,7 @@ def load_pdf(data: bytes) -> tuple[list[Page], dict[str, str]]:
     from pypdf import PdfReader
 
     reader = PdfReader(io.BytesIO(data))
+    labels = _page_labels(reader)
     pages: list[Page] = []
     for i, page in enumerate(reader.pages, start=1):
         try:
@@ -68,7 +69,8 @@ def load_pdf(data: bytes) -> tuple[list[Page], dict[str, str]]:
         except Exception as exc:  # pragma: no cover - malformed PDFs
             log.warning("page %s could not be extracted: %s", i, exc)
             raw = ""
-        pages.append(Page(number=i, text=reflow(clean_text(raw))))
+        label = labels[i - 1] if labels and i - 1 < len(labels) else None
+        pages.append(Page(number=i, text=reflow(clean_text(raw)), label=label))
     meta: dict[str, str] = {}
     if reader.metadata:
         if reader.metadata.title:
@@ -76,6 +78,17 @@ def load_pdf(data: bytes) -> tuple[list[Page], dict[str, str]]:
         if reader.metadata.author:
             meta["author"] = str(reader.metadata.author)
     return pages, meta
+
+
+def _page_labels(reader: Any) -> list[str] | None:
+    """Printed page labels (/PageLabels), or None when they are just 1, 2, 3 …"""
+    try:
+        labels = [str(x) for x in reader.page_labels]
+    except Exception:  # pragma: no cover - malformed label trees
+        return None
+    if not labels or all(lbl == str(i) for i, lbl in enumerate(labels, start=1)):
+        return None
+    return [lbl.strip() or str(i) for i, lbl in enumerate(labels, start=1)]
 
 
 # ---------------------------------------------------------------------- Markdown

@@ -60,3 +60,29 @@ def test_best_quote_grows_window_and_truncates() -> None:
 
 def test_best_quote_empty_query_returns_first_sentence() -> None:
     assert best_quote("A cümlesi. B cümlesi.", "", max_chars=100) == "A cümlesi."
+
+
+def test_fold_strips_turkish_diacritics() -> None:
+    from citewell.text import fold
+
+    assert fold("Öğrencilerin İŞÇİ ISPARTA Çalışanları") == "ogrencilerin isci isparta calisanlari"
+    assert fold("café Ünlü", "english") == "cafe unlu"
+
+
+def test_fold_mapping_matches_migration() -> None:
+    from pathlib import Path
+
+    from citewell.text import FOLD_FROM, FOLD_TO
+
+    assert len(FOLD_FROM) == len(FOLD_TO)
+    sql = (Path(__file__).parent.parent / "src/citewell/migrations/0003_folded_search.sql").read_text()
+    assert f"'{FOLD_FROM}'" in sql
+    assert f"'{FOLD_TO}'" in sql
+
+
+def test_best_quote_matches_queries_without_diacritics() -> None:
+    text = "Bu el kitabı yıllık güncellenir. Uçak biletleri ekonomi sınıfında alınır. Son cümle."
+    assert (
+        best_quote(text, "ucak biletleri hangi sinifta", max_chars=50)
+        == "Uçak biletleri ekonomi sınıfında alınır."
+    )

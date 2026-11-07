@@ -225,7 +225,13 @@ async def test_mcp_tools_resources_prompts(citewell: Citewell) -> None:
     server = build_server(citewell)
     async with Client(server) as mc:
         tools = {t.name: t for t in (await mc.list_tools()).tools}
-        assert set(tools) == {"search_documents", "get_chunk", "list_collections", "list_documents"}
+        assert set(tools) == {
+            "search_documents",
+            "get_chunk",
+            "list_collections",
+            "list_documents",
+            "verify_quote",
+        }
         assert tools["search_documents"].annotations is not None
         assert tools["search_documents"].annotations.read_only_hint is True
 
@@ -247,6 +253,14 @@ async def test_mcp_tools_resources_prompts(citewell: Citewell) -> None:
         docs = await mc.call_tool("list_documents", {"collection": "handbook-en"})
         assert docs.structured_content is not None
         assert docs.structured_content["documents"][0]["source"] == "on-call-handbook.md"
+
+        checked = await mc.call_tool(
+            "verify_quote", {"quote": first["quote"][:120], "chunk_id": first["chunk_id"]}
+        )
+        assert checked.structured_content is not None
+        assert checked.structured_content["verified"] is True
+        assert tools["verify_quote"].annotations is not None
+        assert tools["verify_quote"].annotations.read_only_hint is True
 
         missing = await mc.call_tool("get_chunk", {"chunk_id": "nope"})
         assert missing.is_error
@@ -374,3 +388,225 @@ def test_preload_is_noop_for_hash_backend(citewell: Citewell) -> None:
     assert citewell.preload() is None
     other = Citewell(make_settings(preload_models=False))
     assert other.preload() is None
+
+
+# ---------------------------------------------------------------------- verify
+
+
+def test_verify_quote_service(citewell: Citewell) -> None:
+    v = citewell.verifier
+    hit = citewell.search.search(SearchRequest(query="Günlük yemek harcırahı", top_k=1)).hits[0]
+
+    exact = v.verify("Günlük yemek harcırahı yurt içinde 750 TL'dir.", chunk_id=hit.chunk_id)
+    assert exact.verified
+    assert exact.match == "exact"
+    assert exact.page == 4
+    assert exact.citation == "calisan-el-kitabi.pdf, s. 4"
+
+    by_source = v.verify("GÜNLÜK YEMEK HARCIRAHI yurt içinde 750 TL'dir", source="calisan-el-kitabi.pdf")
+    assert by_source.verified
+    assert by_source.match == "normalized"
+
+    searched = v.verify(
+        "Parolalar en az 14 karakter uzunluğunda olmalıdır."
+    )  # no hint: searches all collections
+    assert searched.verified
+    assert searched.source == "bilgi-guvenligi-politikasi.md"
+    assert searched.section == "Bilgi Güvenliği Politikası > Parola Kuralları"
+
+    wrong = v.verify("Günlük yemek harcırahı yurt içinde 1.000 TL olarak ödenir.", chunk_id=hit.chunk_id)
+    assert not wrong.verified
+    assert wrong.match in ("fuzzy", "not_found")
+
+    paraphrase = v.verify("Yemek harcırahı yurt içinde günlük 750 TL'dir.", chunk_id=hit.chunk_id)
+    assert not paraphrase.verified
+    assert paraphrase.match == "fuzzy"
+    assert paraphrase.source_text is not None
+    assert "750 TL" in paraphrase.source_text
+
+    missing = v.verify("Şirket her çalışana yılda iki kez ikramiye öder.")
+    assert not missing.verified
+    assert missing.match == "not_found"
+
+    with pytest.raises(ValueError, match="too short"):
+        v.verify("kısa")
+    with pytest.raises(NotFoundError):
+        v.verify("bir şey bir şey", source="yok.pdf")
+
+
+def test_verify_quote_rest_and_cli(client: Any, citewell: Citewell, monkeypatch: pytest.MonkeyPatch) -> None:
+    from typer.testing import CliRunner
+
+    from citewell import config
+    from citewell.cli import app
+
+    r = client.post(
+        "/v1/verify", json={"quote": "Deneme süresi işe başlangıç tarihinden itibaren iki aydır."}
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["verified"] is True
+    assert r.json()["page"] == 1
+
+    s = citewell.settings
+    monkeypatch.setenv("CITEWELL_DATABASE_URL", s.database_url)
+    monkeypatch.setenv("CITEWELL_EMBEDDING_BACKEND", "hash")
+    monkeypatch.setenv("CITEWELL_EMBEDDING_DIM", str(s.embedding_dim))
+    monkeypatch.setenv("CITEWELL_RERANKER_BACKEND", "none")
+    monkeypatch.setenv("CITEWELL_CHUNK_SIZE", str(s.chunk_size))
+    monkeypatch.setenv("CITEWELL_CHUNK_OVERLAP", str(s.chunk_overlap))
+    config.get_settings.cache_clear()
+    try:
+        runner = CliRunner()
+        ok = runner.invoke(
+            app, ["verify", "Ekran, 5 dakika işlem yapılmadığında otomatik olarak kilitlenir."]
+        )
+        assert ok.exit_code == 0, ok.output
+        assert "verified" in ok.stdout
+        bad = runner.invoke(
+            app, ["verify", "Ekran 30 saniye sonra kendiliğinden kapanır ve kilitlenir.", "--json"]
+        )
+        assert bad.exit_code == 4
+    finally:
+        config.get_settings.cache_clear()
+
+
+def test_page_labels_end_to_end(citewell: Citewell, tmp_path: Any) -> None:
+    from citewell.mcp_server import _passage
+
+    from .test_loaders import _labelled_pdf
+
+    pdf = tmp_path / "kitap.pdf"
+    _labelled_pdf(pdf)
+    assert citewell.ingest.ingest_paths([pdf], collection="labels-test")[0].status == "ingested"
+    hit = citewell.search.search(
+        SearchRequest(query="Birinci bolum metni", collections=["labels-test"], top_k=1, mode="keyword")
+    ).hits[0]
+    assert (hit.page, hit.page_label) == (3, "1")
+    assert _passage(hit).citation == "kitap.pdf, s. 1 (PDF s. 3)"
+    check = citewell.verifier.verify("Birinci bolum metni.", chunk_id=hit.chunk_id)
+    assert check.citation == "kitap.pdf, s. 1 (PDF s. 3)"
+    citewell.store.delete_collection("labels-test")
+
+
+def test_pending_migrations_are_applied_on_startup(citewell: Citewell) -> None:
+    from citewell import db
+
+    with citewell.store.conn() as conn:
+        conn.execute("DELETE FROM citewell_migrations WHERE version = 2")
+        conn.execute("ALTER TABLE chunks DROP COLUMN page_label")
+        conn.commit()
+        assert db.pending_migrations(conn) == ["0002_page_labels.sql"]
+    citewell.check_schema()  # an upgraded install: applies 0002 instead of failing
+    with citewell.store.conn() as conn:
+        assert db.pending_migrations(conn) == []
+    assert citewell.search.search(SearchRequest(query="parola", top_k=1)).hits
+
+
+def test_search_without_turkish_characters(citewell: Citewell) -> None:
+    q = "ucak biletleri hangi sinifta alinir"  # "uçak biletleri hangi sınıfta alınır"
+    hits = citewell.search.search(SearchRequest(query=q, mode="keyword", top_k=1)).hits
+    assert hits
+    assert (hits[0].source, hits[0].page) == ("calisan-el-kitabi.pdf", 4)
+    assert "Uçak biletleri" in hits[0].quote
+
+    strict = Citewell(make_settings(fold_diacritics=False))
+    try:
+        strict_hits = strict.search.search(
+            SearchRequest(query="sinifinda ucak", mode="keyword", top_k=1)
+        ).hits
+        assert not strict_hits or strict_hits[0].page != 4
+    finally:
+        strict.close()
+
+
+def test_folded_index_backfilled_by_migration(citewell: Citewell) -> None:
+    from citewell import db
+
+    with citewell.store.conn() as conn:
+        before = dict(conn.execute("SELECT id, tsv_folded::text FROM chunks").fetchall())
+        conn.execute("UPDATE chunks SET tsv_folded = NULL")
+        conn.execute("DELETE FROM citewell_migrations WHERE version = 3")
+        conn.commit()
+        assert "0003_folded_search.sql" in db.pending_migrations(conn)
+    citewell.check_schema()
+    with citewell.store.conn() as conn:
+        after = dict(conn.execute("SELECT id, tsv_folded::text FROM chunks").fetchall())
+    assert after == before  # SQL back-fill folds exactly like the Python indexer
+
+
+async def test_mcp_collection_completion_and_documents_template(citewell: Citewell) -> None:
+    import json
+
+    from mcp import Client
+    from mcp.types import PromptReference, ResourceTemplateReference
+
+    from citewell.mcp_server import build_server
+
+    async with Client(build_server(citewell)) as mc:
+        res = await mc.complete(
+            PromptReference(type="ref/prompt", name="answer_with_citations"),
+            {"name": "collection", "value": "hand"},
+        )
+        assert res.completion.values == ["handbook-en"]
+        everything = await mc.complete(
+            ResourceTemplateReference(
+                type="ref/resource", uri="citewell://collections/{collection}/documents"
+            ),
+            {"name": "collection", "value": ""},
+        )
+        assert {"default", "handbook-en"} <= set(everything.completion.values)
+        other = await mc.complete(
+            PromptReference(type="ref/prompt", name="answer_with_citations"),
+            {"name": "question", "value": "x"},
+        )
+        assert other.completion.values == []
+
+        templates = (await mc.list_resource_templates()).resource_templates
+        assert "citewell://collections/{collection}/documents" in {t.uri_template for t in templates}
+        docs = await mc.read_resource("citewell://collections/handbook-en/documents")
+        payload = json.loads(docs.contents[0].text)  # type: ignore[union-attr]
+        assert [d["source"] for d in payload["documents"]] == ["on-call-handbook.md"]
+
+
+def test_cli_ingest_prune(citewell: Citewell, monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
+    from typer.testing import CliRunner
+
+    from citewell import config
+    from citewell.cli import app
+
+    s = citewell.settings
+    monkeypatch.setenv("CITEWELL_DATABASE_URL", s.database_url)
+    monkeypatch.setenv("CITEWELL_EMBEDDING_BACKEND", "hash")
+    monkeypatch.setenv("CITEWELL_EMBEDDING_DIM", str(s.embedding_dim))
+    monkeypatch.setenv("CITEWELL_RERANKER_BACKEND", "none")
+    config.get_settings.cache_clear()
+    folder = tmp_path / "docs"
+    folder.mkdir()
+    for name in ("a.md", "b.md", "c.md"):
+        (folder / name).write_text(f"# {name}\nToplantı notu {name} için içerik.", encoding="utf-8")
+    runner = CliRunner()
+    try:
+        assert runner.invoke(app, ["ingest", str(folder), "-c", "prune-test"]).exit_code == 0
+        (folder / "b.md").unlink()
+        (folder / "c.md").unlink()
+
+        declined = runner.invoke(app, ["ingest", str(folder), "-c", "prune-test", "--prune"], input="n\n")
+        assert declined.exit_code == 0, declined.output
+        assert "b.md" in declined.output
+        assert "not pruned" in declined.output
+        assert len(citewell.store.list_documents("prune-test")) == 3
+
+        confirmed = runner.invoke(app, ["ingest", str(folder), "-c", "prune-test", "--prune"], input="y\n")
+        assert confirmed.exit_code == 0, confirmed.output
+        assert [d.source for d in citewell.store.list_documents("prune-test")] == ["a.md"]
+        assert "2 removed" in confirmed.output
+
+        empty = tmp_path / "empty"
+        empty.mkdir()
+        guarded = runner.invoke(app, ["ingest", str(empty), "-c", "prune-test", "--prune", "--yes"])
+        assert guarded.exit_code == 0
+        assert "not pruning" in guarded.output
+        assert len(citewell.store.list_documents("prune-test")) == 1
+    finally:
+        config.get_settings.cache_clear()
+        citewell.store.delete_collection("prune-test")

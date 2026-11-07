@@ -51,3 +51,15 @@ def test_cli_reports_unreachable_database(monkeypatch: pytest.MonkeyPatch) -> No
         config.get_settings.cache_clear()
     assert r.exit_code == 1
     assert "cannot connect to PostgreSQL at 127.0.0.1:1/citewell" in r.output
+
+
+def test_citation_label_with_page_labels() -> None:
+    from citewell.models import citation_label
+
+    assert citation_label("k.pdf", 17, None, "12") == "k.pdf, s. 12 (PDF s. 17)"
+    assert citation_label("k.pdf", 3, None, "3") == "k.pdf, s. 3"
+    assert citation_label("k.pdf", 3, None, None) == "k.pdf, s. 3"
+    assert (
+        Citation(source="k.pdf", page=2, page_label="ii", chunk_id="x", quote="q").label()
+        == "k.pdf, s. ii (PDF s. 2)"
+    )

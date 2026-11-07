@@ -118,6 +118,14 @@ def migrate(conn: psycopg.Connection, embedding_dim: int, embedding_model: str) 
     return applied
 
 
+def pending_migrations(conn: psycopg.Connection) -> list[str]:
+    exists = conn.execute("SELECT to_regclass('citewell_migrations') IS NOT NULL").fetchone()
+    done: set[int] = set()
+    if exists and exists[0]:
+        done = {int(r[0]) for r in conn.execute("SELECT version FROM citewell_migrations").fetchall()}
+    return [name for version, name, _ in _migration_files() if version not in done]
+
+
 def check_meta(meta: dict[str, str], embedding_dim: int, embedding_model: str) -> None:
     stored_dim = int(meta.get("embedding_dim", embedding_dim))
     stored_model = meta.get("embedding_model", embedding_model)

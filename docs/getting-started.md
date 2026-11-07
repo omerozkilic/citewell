@@ -1,6 +1,27 @@
 # Getting started
 
-## With Docker (recommended)
+## From PyPI (quickest)
+
+Requirements: Python 3.11+ and [uv](https://docs.astral.sh/uv/) (or pipx), plus Docker or any
+PostgreSQL 15+ with [pgvector](https://github.com/pgvector/pgvector).
+
+```bash
+uv tool install "citewell[models]"
+docker run -d --name citewell-db -p 127.0.0.1:5432:5432 \
+  -e POSTGRES_USER=citewell -e POSTGRES_PASSWORD=citewell -e POSTGRES_DB=citewell \
+  -v citewell-pgdata:/var/lib/postgresql/data pgvector/pgvector:pg17
+citewell init
+citewell models download
+citewell ingest ~/Documents/policies -c policies
+```
+
+`uv tool upgrade citewell` updates it later. Then [connect an assistant](mcp-clients.md).
+
+!!! note "Linux servers without a GPU"
+    PyTorch from PyPI ships CUDA libraries (several GB) on Linux. On a CPU-only server the Docker
+    image below is lighter, since it uses CPU-only PyTorch.
+
+## With Docker (REST + HTTP MCP server)
 
 Requirements: Docker with Compose v2. About 4 GB of disk for the image and models.
 
@@ -57,7 +78,7 @@ Run `citewell doctor` at any time to check the database, pgvector version, schem
 
 | Format | Location in citations |
 |---|---|
-| PDF (text layer) | page number |
+| PDF (text layer) | page number; plus the printed page label when the PDF defines one that differs (e.g. `s. 12 (PDF s. 17)`, `s. iv`) |
 | Plain text | page number if the file contains form feeds (`pdftotext` output), otherwise none |
 | Markdown | heading path, e.g. `Bilgi Güvenliği Politikası > Parola Kuralları` |
 | DOCX (`citewell[docx]`) | heading |

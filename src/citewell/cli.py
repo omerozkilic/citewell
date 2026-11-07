@@ -115,6 +115,15 @@ def ingest(
     ] = None,
     force: Annotated[bool, typer.Option("--force", "-f", help="Re-ingest even if unchanged.")] = False,
     recursive: Annotated[bool, typer.Option(help="Recurse into directories.")] = True,
+    prune: Annotated[
+        bool,
+        typer.Option(
+            "--prune",
+            help="Also remove documents from the collection that are no longer in PATHS "
+            "(makes the collection mirror the folder).",
+        ),
+    ] = False,
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Do not ask before pruning.")] = False,
 ) -> None:
     """Load, chunk, embed and store documents. Unchanged files are skipped by content hash."""
     from citewell.models import IngestResult
@@ -122,10 +131,13 @@ def ingest(
     cw = _citewell()
     counts: dict[str, int] = {}
     total_chunks = 0
+    seen: list[str] = []
+    removed: list[str] = []
     style = {"ingested": "green", "unchanged": "dim", "skipped": "yellow", "error": "red"}
 
     def report(res: IngestResult) -> None:
         nonlocal total_chunks
+        seen.append(res.source)
         counts[res.status] = counts.get(res.status, 0) + 1
         total_chunks += res.chunks
         extra = f" {res.chunks} chunks" if res.chunks else ""
@@ -142,14 +154,40 @@ def ingest(
         cw.ingest.ingest_paths(
             paths, collection, language, force=force, recursive=recursive, on_result=report
         )
+        if prune:
+            removed = _prune(cw, collection or cw.settings.default_collection, seen, yes)
+    except typer.Exit:
+        raise
     except Exception as exc:
         raise _fail(str(exc)) from exc
     finally:
         cw.close()
     summary = ", ".join(f"{v} {k}" for k, v in sorted(counts.items())) or "no supported files found"
+    if removed:
+        summary += f", {len(removed)} removed"
     console.print(f"[bold]done:[/] {summary}; {total_chunks} new chunks")
     if counts.get("error"):
         raise typer.Exit(2)
+
+
+def _prune(cw: Citewell, collection: str, seen: list[str], yes: bool) -> list[str]:
+    if not seen:
+        # A typo in PATHS must not empty the whole collection.
+        console.print("[yellow]nothing was found in PATHS; not pruning[/]")
+        return []
+    stale = cw.ingest.stale_sources(collection, seen)
+    if not stale:
+        return []
+    console.print(f"[yellow]{len(stale)} document(s) in '{collection}' are no longer in PATHS:[/]")
+    for source in stale:
+        console.print(f"  - {source}")
+    if not yes and not typer.confirm("Remove them from the index?", default=False):
+        console.print("not pruned")
+        return []
+    for source in stale:
+        cw.store.delete_document(collection, source)
+        console.print(f"[red]{'removed':>9}[/] {source}")
+    return stale
 
 
 # -------------------------------------------------------------------------- search
@@ -187,7 +225,7 @@ def search(
         console.print("[yellow]no results[/]")
         return
     for h in resp.hits:
-        loc = f"s. {h.page}" if h.page is not None else (h.section or "")
+        loc = h.citation.label().removeprefix(h.source).removeprefix(", ")
         where = f", {loc}" if loc else ""
         out.print(
             f"[bold cyan][{h.rank}][/] [bold]{h.source}[/]{where}  [dim]{h.chunk_id} · {h.score:.4f}[/]"
@@ -195,6 +233,42 @@ def search(
         out.print(f"    {h.text if full else h.quote}\n", highlight=False)
     rr = " +rerank" if resp.reranked else ""
     console.print(f"[dim]{len(resp.hits)} results · mode={resp.mode}{rr} · {resp.took_ms:.0f} ms[/]")
+
+
+# -------------------------------------------------------------------------- verify
+
+
+@app.command()
+def verify(
+    quote: Annotated[str, typer.Argument(help="The quote to check.")],
+    chunk: Annotated[str | None, typer.Option("--chunk", help="chunk_id the quote comes from.")] = None,
+    source: Annotated[str | None, typer.Option("--source", "-s", help="Document path.")] = None,
+    collection: Annotated[
+        list[str] | None, typer.Option("--collection", "-c", help="Repeatable; default: all.")
+    ] = None,
+    as_json: Annotated[bool, typer.Option("--json", help="Print the raw JSON result.")] = False,
+) -> None:
+    """Check that a quote really appears in the indexed documents (exit code 4 if not)."""
+    cw = _citewell()
+    try:
+        cw.check_schema()
+        res = cw.verifier.verify(quote, chunk_id=chunk, source=source, collections=collection)
+    except Exception as exc:
+        raise _fail(str(exc)) from exc
+    finally:
+        cw.close()
+    if as_json:
+        out.print_json(res.model_dump_json())
+    else:
+        icon = "[green]✓ verified[/]" if res.verified else "[red]✗ not verified[/]"
+        out.print(f"{icon} [dim]({res.match}, similarity {res.similarity:.2f})[/]")
+        if res.citation:
+            out.print(f"  [bold]{res.citation}[/]  [dim]{res.chunk_id}[/]")
+        if res.source_text and res.match != "exact":
+            out.print(f"  source: {res.source_text}", highlight=False)
+        console.print(f"[dim]{res.note}[/]")
+    if not res.verified:
+        raise typer.Exit(4)
 
 
 # --------------------------------------------------------------------------- serve

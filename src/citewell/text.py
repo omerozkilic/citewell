@@ -28,6 +28,21 @@ def tr_lower(text: str, language: str = "turkish") -> str:
     return text.lower()
 
 
+# Diacritic folding for search. The same two strings are used by migration 0003 (SQL translate()),
+# so text indexed by Python and text back-filled by SQL fold identically.
+FOLD_FROM = "çğıöşüâîûéèêëáàäóòôúùñ"
+FOLD_TO = "cgiosuaiueeeeaaaooouun"
+_FOLD_TABLE = str.maketrans(FOLD_FROM, FOLD_TO)
+
+
+def fold(text: str, language: str = "turkish") -> str:
+    """Lowercase (Turkish-aware) and strip common diacritics: ``Öğrenci`` → ``ogrenci``.
+
+    Used only for the search index and queries, never for text shown to users.
+    """
+    return tr_lower(text, language).translate(_FOLD_TABLE)
+
+
 def clean_text(text: str) -> str:
     """Normalise extracted text without changing its meaning.
 
@@ -89,8 +104,9 @@ def tokenize(text: str, language: str = "turkish") -> list[str]:
 
 def _stem(token: str, prefix: int = 5) -> str:
     """Crude prefix stem: Turkish is agglutinative, so the first few
-    characters are a surprisingly robust stand-in for the root."""
-    return token[:prefix]
+    characters are a surprisingly robust stand-in for the root. Folded, so
+    ``ogrenci`` (typed without Turkish characters) still matches ``öğrenci``."""
+    return token[:prefix].translate(_FOLD_TABLE)
 
 
 def best_quote(text: str, query: str, language: str = "turkish", max_chars: int = 320) -> str:

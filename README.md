@@ -38,16 +38,38 @@ Claude ▸ (calls citewell.search_documents)
 ## Why Citewell?
 
 - **Cited, verifiable passages** — page-aware chunking that never crosses page boundaries, verbatim
-  quotes, stable chunk ids ([ADR-0006](docs/adr/0006-page-aware-chunking.md)).
+  quotes, stable chunk ids ([ADR-0006](docs/adr/0006-page-aware-chunking.md)), and a `verify_quote`
+  tool so assistants can check a quotation against the source before presenting it. Printed page
+  numbers from the PDF are shown when they differ from the physical page (`s. 12 (PDF s. 17)`).
 - **MCP-native** — stdio for desktop clients, Streamable HTTP at `/mcp`, structured tool output,
   resources and a citation prompt. Read-only by design ([ADR-0007](docs/adr/0007-read-only-mcp.md)).
 - **Hybrid search** — pgvector (HNSW) + PostgreSQL full-text search fused with Reciprocal Rank Fusion,
   optional `bge-reranker-v2-m3` cross-encoder ([ADR-0004](docs/adr/0004-hybrid-search-rrf.md)).
 - **Turkish first** — Turkish stemming (`tsvector` `turkish` config), correct `I/ı` – `İ/i` casing,
-  cp1254 decoding, multilingual `bge-m3` embeddings, a Turkish eval set.
+  search that works without Turkish characters (`ogrenci izni` finds `öğrenci izni`), cp1254
+  decoding, multilingual `bge-m3` embeddings, Turkish eval sets.
 - **Offline & private** — local models; after a one-time download nothing leaves your machine.
 - **Measured** — built-in eval: Recall@k, MRR, hit rate, page hit rate, p50/p95 latency.
 - **One command** — `docker compose up`. PostgreSQL is the only dependency.
+
+## Quickstart (PyPI, no clone)
+
+```bash
+uv tool install "citewell[models]"      # or: pipx install "citewell[models]"
+
+# PostgreSQL + pgvector (any PostgreSQL 15+ with pgvector works)
+docker run -d --name citewell-db -p 127.0.0.1:5432:5432 \
+  -e POSTGRES_USER=citewell -e POSTGRES_PASSWORD=citewell -e POSTGRES_DB=citewell \
+  -v citewell-pgdata:/var/lib/postgresql/data pgvector/pgvector:pg17
+
+citewell init
+citewell models download                # once (~4–5 GB), needs internet; offline afterwards
+citewell ingest ~/Documents/policies -c policies
+citewell search "yıllık izin kaç gün?" -c policies
+```
+
+Then [connect your assistant](#connect-your-assistant) — e.g. Claude Code:
+`claude mcp add -s user citewell -- citewell mcp`
 
 ## Quickstart (Docker)
 
@@ -90,16 +112,36 @@ uv run citewell search "parola en az kaç karakter olmalı?" -c handbook
 <summary><b>Claude Code</b></summary>
 
 ```bash
-# HTTP (server running via docker compose or `citewell serve`)
-claude mcp add --transport http citewell http://localhost:8000/mcp
+# stdio, installed from PyPI (`uv tool install "citewell[models]"`)
+claude mcp add -s user citewell -- citewell mcp
 
-# or stdio, from a local checkout
-claude mcp add citewell -- uv --directory /path/to/citewell run citewell mcp
+# HTTP (server running via docker compose or `citewell serve`)
+claude mcp add -s user --transport http citewell http://localhost:8000/mcp
+
+# stdio, from a local checkout
+claude mcp add -s user citewell -- uv --directory /path/to/citewell run citewell mcp
 ```
 </details>
 
 <details>
 <summary><b>Claude Desktop</b> — <code>claude_desktop_config.json</code></summary>
+
+Installed from PyPI — Claude Desktop does not see your shell's `PATH`, so use the full path that
+`which citewell` prints (typically `~/.local/bin/citewell`):
+
+```json
+{
+  "mcpServers": {
+    "citewell": {
+      "command": "/Users/you/.local/bin/citewell",
+      "args": ["mcp"],
+      "env": { "CITEWELL_DATABASE_URL": "postgresql://citewell:citewell@localhost:5432/citewell" }
+    }
+  }
+}
+```
+
+With Docker Compose:
 
 ```json
 {
@@ -112,7 +154,7 @@ claude mcp add citewell -- uv --directory /path/to/citewell run citewell mcp
 }
 ```
 
-Local checkout instead of Docker:
+Local checkout:
 
 ```json
 {
@@ -133,6 +175,8 @@ Local checkout instead of Docker:
 ```json
 { "mcpServers": { "citewell": { "url": "http://localhost:8000/mcp" } } }
 ```
+
+or stdio with the PyPI install: `{ "mcpServers": { "citewell": { "command": "citewell", "args": ["mcp"] } } }`
 </details>
 
 ### MCP surface
@@ -141,16 +185,18 @@ Local checkout instead of Docker:
 |---|---|---|
 | tool | `search_documents(query, top_k, collection, mode, rerank, source_prefix)` | Cited passages (`ref`, `citation`, `source`, `page`, `chunk_id`, `quote`, `text`, `score`) |
 | tool | `get_chunk(chunk_id, context)` | A chunk plus neighbouring chunks, to read around a quote |
+| tool | `verify_quote(quote, chunk_id, source, collection)` | Checks that a quotation really occurs in the source; returns the exact wording and page, or the closest passage if it was paraphrased |
 | tool | `list_collections()` / `list_documents(collection)` | What is indexed |
-| resource | `citewell://collections`, `citewell://chunks/{id}` | Same data as resources |
+| resource | `citewell://collections`, `citewell://collections/{collection}/documents`, `citewell://chunks/{id}` | Same data as resources; collection names auto-complete |
 | prompt | `answer_with_citations(question, collection)` | "Answer only from passages, cite with [n]" |
 
 ## CLI
 
 ```text
 citewell init                         create extension + schema (idempotent)
-citewell ingest PATH... [-c COL] [-l turkish|english|simple] [--force]
+citewell ingest PATH... [-c COL] [-l turkish|english|simple] [--force] [--prune [-y]]
 citewell search "query" [-k 5] [-m hybrid|vector|keyword] [-c COL|*] [--rerank] [--json]
+citewell verify "quote" [--chunk ID] [--source FILE] [-c COL]   exit code 4 if not found
 citewell serve [--init] [--host] [--port]      REST API + MCP at /mcp
 citewell mcp [--transport stdio|http]          MCP server only
 citewell eval DATASET.jsonl [-k 5] [-r vector,keyword,hybrid,hybrid+rerank] [-o report.json]
@@ -165,7 +211,7 @@ curl -s localhost:8000/v1/search -H 'content-type: application/json' \
 curl -s -F file=@politika.pdf -F collection=handbook localhost:8000/v1/documents
 ```
 
-`GET /health` · `POST|GET /v1/search` · `GET /v1/chunks/{id}?context=1` · `GET|POST|DELETE /v1/collections` ·
+`GET /health` · `POST|GET /v1/search` · `POST /v1/verify` · `GET /v1/chunks/{id}?context=1` · `GET|POST|DELETE /v1/collections` ·
 `GET|POST|DELETE /v1/documents` — full schema at `/docs`. Set `CITEWELL_API_TOKEN` to require a bearer token.
 
 ## How it works
@@ -242,12 +288,15 @@ All settings are environment variables prefixed with `CITEWELL_` (or a `.env` fi
 
 ## Roadmap
 
-- [x] **v0.1** — ingest (PDF/MD/TXT/HTML/DOCX), vector search, cited passages, CLI, REST, MCP, Docker
-- [x] **v0.2** — hybrid search (pgvector + tsvector, RRF), cross-encoder rerank, Turkish eval harness
-- [ ] **v0.3** — MCP: completions, progress notifications, resource subscriptions; per-collection
-  access, collection-scoped tokens *(collections, resources and prompts already ship)*
-- [ ] Later — OpenAI-compatible endpoint (Open WebUI), OCR for scanned PDFs, sparse/BM25 retriever,
-  larger public Turkish benchmark, SQLite single-file mode
+- [x] **0.1** — ingest (PDF/MD/TXT/HTML/DOCX), hybrid search (pgvector + tsvector, RRF), rerank,
+  cited passages over CLI / REST / MCP, collections, Docker, Turkish eval sets
+- [x] **0.2** — PyPI install, `verify_quote`, printed page labels, search without Turkish
+  characters, MCP completions, `ingest --prune`
+- [ ] **0.3** — OCR for scanned PDFs, better tables, `citewell watch`
+- [ ] **0.4** — OpenAI-compatible endpoint (Open WebUI), per-collection tokens
+- [ ] **1.0** — stable API, public Turkish benchmark, sparse/BM25 retriever, SQLite mode
+
+Details: [docs/roadmap.md](docs/roadmap.md).
 
 ## Contributing
 

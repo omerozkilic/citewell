@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import threading
 from functools import cached_property
+from typing import TYPE_CHECKING
 
 from psycopg_pool import ConnectionPool
 
@@ -20,6 +21,9 @@ from citewell.ingest import IngestService
 from citewell.rerank import Reranker, build_reranker
 from citewell.search import SearchService
 from citewell.store import Store
+
+if TYPE_CHECKING:
+    from citewell.verify import QuoteVerifier
 
 log = logging.getLogger(__name__)
 
@@ -56,6 +60,12 @@ class Citewell:
         if meta is None:
             raise db.SchemaMismatchError("database is not initialised; run `citewell init` first")
         db.check_meta(meta, self.settings.embedding_dim, self.embedding_model_id)
+        with self.store.conn() as conn:
+            pending = db.pending_migrations(conn)
+        if pending:
+            # Migrations are additive; apply them so an upgraded install keeps working.
+            log.info("applying pending migrations: %s", ", ".join(pending))
+            self.init_db()
 
     # ------------------------------------------------------------------ models
 
@@ -108,6 +118,12 @@ class Citewell:
     @property
     def ingest(self) -> IngestService:
         return IngestService(self.store, self.embedder, self.settings)
+
+    @property
+    def verifier(self) -> QuoteVerifier:
+        from citewell.verify import QuoteVerifier
+
+        return QuoteVerifier(self.store, self.search)
 
     def preload(self) -> threading.Thread | None:
         """Warm up the embedding model (and the reranker if it is on by default) in the background."""

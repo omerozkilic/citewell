@@ -1,0 +1,36 @@
+// Same questions as tr-sample.jsonl, typed without Turkish characters (as on many phones/keyboards).
+{"id": "tr01-ascii", "query": "Haftalik standart calisma suresi kac saat?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 1}], "tags": ["ascii", "exact"]}
+{"id": "tr02-ascii", "query": "Cekirdek mesai saatleri hangi saatler arasinda?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 1}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr03-ascii", "query": "Fazla mesai ucreti nasil hesaplanir?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 1}], "tags": ["ascii", "exact"]}
+{"id": "tr04-ascii", "query": "Yeni ise baslayan birinin deneme suresi ne kadar?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 1}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr05-ascii", "query": "Alti yillik bir calisan yilda kac gun izin kullanabilir?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 2}], "tags": ["ascii", "reasoning"]}
+{"id": "tr06-ascii", "query": "Kullanmadigim izin gunlerini seneye aktarabilir miyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 2}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr07-ascii", "query": "Izin talebini ne kadar onceden yapmam gerekiyor?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 2}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr08-ascii", "query": "Hastalandigimda rapor gerekiyor mu?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 3}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr09-ascii", "query": "Evlilik izni kac gun?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 3}], "tags": ["ascii", "morphology"]}
+{"id": "tr10-ascii", "query": "Babalik izni suresi", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 3}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr11-ascii", "query": "Ev degistirdigimde izin alabilir miyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 3}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr12-ascii", "query": "Ankara'da otelde bir gece icin en fazla ne kadar harcayabilirim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 4}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr13-ascii", "query": "Gunluk yemek harcirahi ne kadar?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 4}], "tags": ["ascii", "exact"]}
+{"id": "tr14-ascii", "query": "Masraf fislerini kac gun icinde sisteme girmeliyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 4}], "tags": ["ascii", "exact"]}
+{"id": "tr15-ascii", "query": "Uzun ucuslarda business class alabilir miyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 4}], "tags": ["ascii", "cross-lingual"]}
+{"id": "tr16-ascii", "query": "Kisi basi yillik egitim butcesi", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 5}], "tags": ["ascii", "exact"]}
+{"id": "tr17-ascii", "query": "Pahali bir sertifikayi sirket oderse ayrilmak icin ne kadar beklemeliyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 5}], "tags": ["ascii", "reasoning"]}
+{"id": "tr18-ascii", "query": "Mentorluk programina nasil katilirim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 5}], "tags": ["ascii", "exact"]}
+{"id": "tr19-ascii", "query": "Tedarikciden hediye kabul edebilir miyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 6}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr20-ascii", "query": "Cikar catismasini kime ve ne zaman bildirmeliyim?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 6}], "tags": ["ascii", "exact"]}
+{"id": "tr21-ascii", "query": "Ihbar eden calisana misilleme yapilirsa ne olur?", "relevant": [{"source": "calisan-el-kitabi.pdf", "page": 6}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr22-ascii", "query": "Parolam en az kac karakter olmali?", "relevant": [{"source": "bilgi-guvenligi-politikasi.md"}], "tags": ["ascii", "morphology"]}
+{"id": "tr23-ascii", "query": "SMS dogrulama kodu ikinci faktor olarak kabul ediliyor mu?", "relevant": [{"source": "bilgi-guvenligi-politikasi.md"}], "tags": ["ascii", "exact"]}
+{"id": "tr24-ascii", "query": "Musteri sozlesmeleri hangi veri sinifina girer?", "relevant": [{"source": "bilgi-guvenligi-politikasi.md"}], "tags": ["ascii", "reasoning"]}
+{"id": "tr25-ascii", "query": "Laptopum calinirsa ne yapmaliyim?", "relevant": [{"source": "bilgi-guvenligi-politikasi.md"}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr26-ascii", "query": "Guvenlik yamalari kac gun icinde kurulmali?", "relevant": [{"source": "bilgi-guvenligi-politikasi.md"}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr27-ascii", "query": "Haftada kac gun evden calisabilirim?", "relevant": [{"source": "uzaktan-calisma-yonergesi.md"}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr28-ascii", "query": "Ev interneti icin sirket odeme yapiyor mu?", "relevant": [{"source": "uzaktan-calisma-yonergesi.md"}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr29-ascii", "query": "Yurt disindan en fazla kac gun calisabilirim?", "relevant": [{"source": "uzaktan-calisma-yonergesi.md"}], "tags": ["ascii", "exact"]}
+{"id": "tr30-ascii", "query": "Ergonomik sandalye destegi", "relevant": [{"source": "uzaktan-calisma-yonergesi.md"}], "tags": ["ascii", "exact"]}
+{"id": "tr31-ascii", "query": "Reddedilen adaylarin CV'leri ne kadar sure tutuluyor?", "relevant": [{"source": "kisisel-veri-saklama-ve-imha.md"}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr32-ascii", "query": "Guvenlik kamerasi goruntuleri kac gun saklanir?", "relevant": [{"source": "kisisel-veri-saklama-ve-imha.md"}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr33-ascii", "query": "Periyodik imha hangi siklikla yapilir?", "relevant": [{"source": "kisisel-veri-saklama-ve-imha.md"}], "tags": ["ascii", "exact"]}
+{"id": "tr34-ascii", "query": "Verilerimin silinmesini nasil talep ederim?", "relevant": [{"source": "kisisel-veri-saklama-ve-imha.md"}], "tags": ["ascii", "paraphrase"]}
+{"id": "tr35-ascii", "query": "Kisisel veri ihlalini kurula kac saat icinde bildirmek gerekir?", "relevant": [{"source": "bilgi-guvenligi-politikasi.md"}], "tags": ["ascii", "exact"]}
