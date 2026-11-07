@@ -18,7 +18,14 @@ from citewell.app import Citewell
 from citewell.db import SchemaMismatchError
 from citewell.loaders import SUPPORTED_SUFFIXES
 from citewell.mcp_server import build_server
-from citewell.models import ChunkRecord, Collection, DocumentInfo, IngestResult, SearchResponse
+from citewell.models import (
+    ChunkRecord,
+    Collection,
+    DocumentInfo,
+    IngestResult,
+    QuoteCheck,
+    SearchResponse,
+)
 from citewell.search import SearchRequest
 from citewell.store import NotFoundError
 
@@ -32,6 +39,13 @@ class SearchBody(BaseModel):
     collections: list[str] | None = None
     rerank: bool | None = None
     source_prefix: str | None = None
+
+
+class VerifyBody(BaseModel):
+    quote: str = Field(min_length=1, max_length=4000)
+    chunk_id: str | None = None
+    source: str | None = None
+    collections: list[str] | None = None
 
 
 class CollectionBody(BaseModel):
@@ -166,6 +180,12 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
     ) -> SearchResponse:
         return cw.search.search(
             SearchRequest(query=q, top_k=k, mode=mode, collections=collection, rerank=rerank)
+        )
+
+    @api.post("/v1/verify", response_model=QuoteCheck, tags=["search"])
+    def verify(body: VerifyBody, cw: Svc) -> QuoteCheck:
+        return cw.verifier.verify(
+            body.quote, chunk_id=body.chunk_id, source=body.source, collections=body.collections
         )
 
     @api.get("/v1/chunks/{chunk_id}", response_model=list[ChunkRecord], tags=["chunks"])
