@@ -8,9 +8,12 @@ Citewell speaks MCP over two transports:
 ## Claude Code
 
 ```bash
-claude mcp add --transport http citewell http://localhost:8000/mcp
-# or stdio from a checkout:
-claude mcp add citewell -- uv --directory /path/to/citewell run citewell mcp
+# installed from PyPI (uv tool install "citewell[models]")
+claude mcp add -s user citewell -- citewell mcp
+# HTTP, server running via Docker Compose or `citewell serve`
+claude mcp add -s user --transport http citewell http://localhost:8000/mcp
+# stdio from a checkout
+claude mcp add -s user citewell -- uv --directory /path/to/citewell run citewell mcp
 ```
 
 Then ask: *"citewell'de uzaktan çalışma kurallarını ara ve kaynak göstererek özetle"*.
@@ -18,6 +21,24 @@ Then ask: *"citewell'de uzaktan çalışma kurallarını ara ve kaynak gösterer
 ## Claude Desktop
 
 Settings → Developer → Edit config (`claude_desktop_config.json`):
+
+=== "PyPI install"
+
+    Claude Desktop does not see your shell's `PATH`; use the full path from `which citewell`.
+
+    ```json
+    {
+      "mcpServers": {
+        "citewell": {
+          "command": "/Users/you/.local/bin/citewell",
+          "args": ["mcp"],
+          "env": {
+            "CITEWELL_DATABASE_URL": "postgresql://citewell:citewell@localhost:5432/citewell"
+          }
+        }
+      }
+    }
+    ```
 
 === "Docker"
 
