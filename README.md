@@ -49,6 +49,25 @@ Claude ▸ (calls citewell.search_documents)
 - **Measured** — built-in eval: Recall@k, MRR, hit rate, page hit rate, p50/p95 latency.
 - **One command** — `docker compose up`. PostgreSQL is the only dependency.
 
+## Quickstart (PyPI, no clone)
+
+```bash
+uv tool install "citewell[models]"      # or: pipx install "citewell[models]"
+
+# PostgreSQL + pgvector (any PostgreSQL 15+ with pgvector works)
+docker run -d --name citewell-db -p 127.0.0.1:5432:5432 \
+  -e POSTGRES_USER=citewell -e POSTGRES_PASSWORD=citewell -e POSTGRES_DB=citewell \
+  -v citewell-pgdata:/var/lib/postgresql/data pgvector/pgvector:pg17
+
+citewell init
+citewell models download                # once (~4–5 GB), needs internet; offline afterwards
+citewell ingest ~/Documents/policies -c policies
+citewell search "yıllık izin kaç gün?" -c policies
+```
+
+Then [connect your assistant](#connect-your-assistant) — e.g. Claude Code:
+`claude mcp add -s user citewell -- citewell mcp`
+
 ## Quickstart (Docker)
 
 ```bash
@@ -90,16 +109,36 @@ uv run citewell search "parola en az kaç karakter olmalı?" -c handbook
 <summary><b>Claude Code</b></summary>
 
 ```bash
-# HTTP (server running via docker compose or `citewell serve`)
-claude mcp add --transport http citewell http://localhost:8000/mcp
+# stdio, installed from PyPI (`uv tool install "citewell[models]"`)
+claude mcp add -s user citewell -- citewell mcp
 
-# or stdio, from a local checkout
-claude mcp add citewell -- uv --directory /path/to/citewell run citewell mcp
+# HTTP (server running via docker compose or `citewell serve`)
+claude mcp add -s user --transport http citewell http://localhost:8000/mcp
+
+# stdio, from a local checkout
+claude mcp add -s user citewell -- uv --directory /path/to/citewell run citewell mcp
 ```
 </details>
 
 <details>
 <summary><b>Claude Desktop</b> — <code>claude_desktop_config.json</code></summary>
+
+Installed from PyPI — Claude Desktop does not see your shell's `PATH`, so use the full path that
+`which citewell` prints (typically `~/.local/bin/citewell`):
+
+```json
+{
+  "mcpServers": {
+    "citewell": {
+      "command": "/Users/you/.local/bin/citewell",
+      "args": ["mcp"],
+      "env": { "CITEWELL_DATABASE_URL": "postgresql://citewell:citewell@localhost:5432/citewell" }
+    }
+  }
+}
+```
+
+With Docker Compose:
 
 ```json
 {
@@ -112,7 +151,7 @@ claude mcp add citewell -- uv --directory /path/to/citewell run citewell mcp
 }
 ```
 
-Local checkout instead of Docker:
+Local checkout:
 
 ```json
 {
@@ -133,6 +172,8 @@ Local checkout instead of Docker:
 ```json
 { "mcpServers": { "citewell": { "url": "http://localhost:8000/mcp" } } }
 ```
+
+or stdio with the PyPI install: `{ "mcpServers": { "citewell": { "command": "citewell", "args": ["mcp"] } } }`
 </details>
 
 ### MCP surface

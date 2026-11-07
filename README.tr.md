@@ -42,7 +42,24 @@ Claude ▸ (citewell.search_documents çağrılır)
   çıkmaz.
 - **Ölçülebilir** — Recall@k, MRR, isabet oranı, sayfa isabeti, p50/p95 gecikme.
 
-## Hızlı başlangıç
+## Hızlı başlangıç (PyPI, klonlamadan)
+
+```bash
+uv tool install "citewell[models]"      # veya: pipx install "citewell[models]"
+
+# PostgreSQL + pgvector
+docker run -d --name citewell-db -p 127.0.0.1:5432:5432 \
+  -e POSTGRES_USER=citewell -e POSTGRES_PASSWORD=citewell -e POSTGRES_DB=citewell \
+  -v citewell-pgdata:/var/lib/postgresql/data pgvector/pgvector:pg17
+
+citewell init
+citewell models download                # bir kez (~4–5 GB), internet gerekir; sonra çevrimdışı
+citewell ingest ~/Belgeler/politikalar -c politikalar
+citewell search "yıllık izin kaç gün?" -c politikalar
+claude mcp add -s user citewell -- citewell mcp   # Claude Code'a bağla
+```
+
+## Hızlı başlangıç (Docker)
 
 ```bash
 git clone https://github.com/omerozkilic/citewell && cd citewell
