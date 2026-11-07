@@ -7,8 +7,16 @@ must never be able to trigger write actions (see SECURITY.md).
 
 from typing import Annotated, Literal
 
+import anyio.to_thread
 from mcp.server.mcpserver import MCPServer
-from mcp.types import ToolAnnotations
+from mcp.types import (
+    Completion,
+    CompletionArgument,
+    CompletionContext,
+    PromptReference,
+    ResourceTemplateReference,
+    ToolAnnotations,
+)
 from pydantic import BaseModel, Field
 
 from citewell import __version__
@@ -235,6 +243,31 @@ def build_server(app: Citewell) -> MCPServer:
     def chunk_resource(chunk_id: str) -> str:
         c = app.store.get_chunk(chunk_id)
         return f"[{citation_label(c.source, c.page, c.section, c.page_label)} · {c.chunk_id}]\n\n{c.text}"
+
+    @mcp.resource(
+        "citewell://collections/{collection}/documents",
+        name="collection_documents",
+        title="Documents in a collection",
+        description="Documents of one collection as JSON (source, title, pages, chunks).",
+        mime_type="application/json",
+    )
+    def collection_documents(collection: str) -> str:
+        app.store.get_collection(collection)  # raises a clear error for unknown names
+        return DocumentList(documents=app.store.list_documents(collection)).model_dump_json(indent=2)
+
+    @mcp.completion()  # type: ignore[no-untyped-call, untyped-decorator]  # SDK decorator is untyped
+    async def complete_argument(
+        ref: PromptReference | ResourceTemplateReference,
+        argument: CompletionArgument,
+        context: CompletionContext | None,
+    ) -> Completion | None:
+        """Suggest collection names for `collection` arguments (prompts and resource templates)."""
+        if argument.name != "collection":
+            return None
+        prefix = (argument.value or "").lower()
+        names = await anyio.to_thread.run_sync(lambda: [c.name for c in app.store.list_collections()])
+        matches = [n for n in names if n.startswith(prefix)]
+        return Completion(values=matches[:100], total=len(matches), has_more=len(matches) > 100)
 
     @mcp.prompt(
         name="answer_with_citations",

@@ -98,8 +98,9 @@ claude mcp add --transport http citewell http://localhost:8000/mcp --header "Aut
 | tool | `list_collections` | name, language, document and chunk counts |
 | tool | `list_documents` | per collection |
 | resource | `citewell://collections` | JSON |
+| resource | `citewell://collections/{collection}/documents` | JSON; `collection` auto-completes |
 | resource | `citewell://chunks/{chunk_id}` | plain text with a citation header |
-| prompt | `answer_with_citations` | `question`, `collection` |
+| prompt | `answer_with_citations` | `question`, `collection` (auto-completes) |
 
 All tools are annotated `readOnlyHint: true` and return structured JSON (with an output schema) as
 well as text. The server's instructions ask the assistant to cite with `[n]` markers, finish with a

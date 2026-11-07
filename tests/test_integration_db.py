@@ -532,3 +532,81 @@ def test_folded_index_backfilled_by_migration(citewell: Citewell) -> None:
     with citewell.store.conn() as conn:
         after = dict(conn.execute("SELECT id, tsv_folded::text FROM chunks").fetchall())
     assert after == before  # SQL back-fill folds exactly like the Python indexer
+
+
+async def test_mcp_collection_completion_and_documents_template(citewell: Citewell) -> None:
+    import json
+
+    from mcp import Client
+    from mcp.types import PromptReference, ResourceTemplateReference
+
+    from citewell.mcp_server import build_server
+
+    async with Client(build_server(citewell)) as mc:
+        res = await mc.complete(
+            PromptReference(type="ref/prompt", name="answer_with_citations"),
+            {"name": "collection", "value": "hand"},
+        )
+        assert res.completion.values == ["handbook-en"]
+        everything = await mc.complete(
+            ResourceTemplateReference(
+                type="ref/resource", uri="citewell://collections/{collection}/documents"
+            ),
+            {"name": "collection", "value": ""},
+        )
+        assert {"default", "handbook-en"} <= set(everything.completion.values)
+        other = await mc.complete(
+            PromptReference(type="ref/prompt", name="answer_with_citations"),
+            {"name": "question", "value": "x"},
+        )
+        assert other.completion.values == []
+
+        templates = (await mc.list_resource_templates()).resource_templates
+        assert "citewell://collections/{collection}/documents" in {t.uri_template for t in templates}
+        docs = await mc.read_resource("citewell://collections/handbook-en/documents")
+        payload = json.loads(docs.contents[0].text)  # type: ignore[union-attr]
+        assert [d["source"] for d in payload["documents"]] == ["on-call-handbook.md"]
+
+
+def test_cli_ingest_prune(citewell: Citewell, monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
+    from typer.testing import CliRunner
+
+    from citewell import config
+    from citewell.cli import app
+
+    s = citewell.settings
+    monkeypatch.setenv("CITEWELL_DATABASE_URL", s.database_url)
+    monkeypatch.setenv("CITEWELL_EMBEDDING_BACKEND", "hash")
+    monkeypatch.setenv("CITEWELL_EMBEDDING_DIM", str(s.embedding_dim))
+    monkeypatch.setenv("CITEWELL_RERANKER_BACKEND", "none")
+    config.get_settings.cache_clear()
+    folder = tmp_path / "docs"
+    folder.mkdir()
+    for name in ("a.md", "b.md", "c.md"):
+        (folder / name).write_text(f"# {name}\nToplantı notu {name} için içerik.", encoding="utf-8")
+    runner = CliRunner()
+    try:
+        assert runner.invoke(app, ["ingest", str(folder), "-c", "prune-test"]).exit_code == 0
+        (folder / "b.md").unlink()
+        (folder / "c.md").unlink()
+
+        declined = runner.invoke(app, ["ingest", str(folder), "-c", "prune-test", "--prune"], input="n\n")
+        assert declined.exit_code == 0, declined.output
+        assert "b.md" in declined.output
+        assert "not pruned" in declined.output
+        assert len(citewell.store.list_documents("prune-test")) == 3
+
+        confirmed = runner.invoke(app, ["ingest", str(folder), "-c", "prune-test", "--prune"], input="y\n")
+        assert confirmed.exit_code == 0, confirmed.output
+        assert [d.source for d in citewell.store.list_documents("prune-test")] == ["a.md"]
+        assert "2 removed" in confirmed.output
+
+        empty = tmp_path / "empty"
+        empty.mkdir()
+        guarded = runner.invoke(app, ["ingest", str(empty), "-c", "prune-test", "--prune", "--yes"])
+        assert guarded.exit_code == 0
+        assert "not pruning" in guarded.output
+        assert len(citewell.store.list_documents("prune-test")) == 1
+    finally:
+        config.get_settings.cache_clear()
+        citewell.store.delete_collection("prune-test")

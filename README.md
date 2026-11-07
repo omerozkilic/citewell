@@ -187,14 +187,14 @@ or stdio with the PyPI install: `{ "mcpServers": { "citewell": { "command": "cit
 | tool | `get_chunk(chunk_id, context)` | A chunk plus neighbouring chunks, to read around a quote |
 | tool | `verify_quote(quote, chunk_id, source, collection)` | Checks that a quotation really occurs in the source; returns the exact wording and page, or the closest passage if it was paraphrased |
 | tool | `list_collections()` / `list_documents(collection)` | What is indexed |
-| resource | `citewell://collections`, `citewell://chunks/{id}` | Same data as resources |
+| resource | `citewell://collections`, `citewell://collections/{collection}/documents`, `citewell://chunks/{id}` | Same data as resources; collection names auto-complete |
 | prompt | `answer_with_citations(question, collection)` | "Answer only from passages, cite with [n]" |
 
 ## CLI
 
 ```text
 citewell init                         create extension + schema (idempotent)
-citewell ingest PATH... [-c COL] [-l turkish|english|simple] [--force]
+citewell ingest PATH... [-c COL] [-l turkish|english|simple] [--force] [--prune [-y]]
 citewell search "query" [-k 5] [-m hybrid|vector|keyword] [-c COL|*] [--rerank] [--json]
 citewell verify "quote" [--chunk ID] [--source FILE] [-c COL]   exit code 4 if not found
 citewell serve [--init] [--host] [--port]      REST API + MCP at /mcp
@@ -288,12 +288,15 @@ All settings are environment variables prefixed with `CITEWELL_` (or a `.env` fi
 
 ## Roadmap
 
-- [x] **v0.1** — ingest (PDF/MD/TXT/HTML/DOCX), vector search, cited passages, CLI, REST, MCP, Docker
-- [x] **v0.2** — hybrid search (pgvector + tsvector, RRF), cross-encoder rerank, Turkish eval harness
-- [ ] **v0.3** — MCP: completions, progress notifications, resource subscriptions; per-collection
-  access, collection-scoped tokens *(collections, resources and prompts already ship)*
-- [ ] Later — OpenAI-compatible endpoint (Open WebUI), OCR for scanned PDFs, sparse/BM25 retriever,
-  larger public Turkish benchmark, SQLite single-file mode
+- [x] **0.1** — ingest (PDF/MD/TXT/HTML/DOCX), hybrid search (pgvector + tsvector, RRF), rerank,
+  cited passages over CLI / REST / MCP, collections, Docker, Turkish eval sets
+- [x] **0.2** — PyPI install, `verify_quote`, printed page labels, search without Turkish
+  characters, MCP completions, `ingest --prune`
+- [ ] **0.3** — OCR for scanned PDFs, better tables, `citewell watch`
+- [ ] **0.4** — OpenAI-compatible endpoint (Open WebUI), per-collection tokens
+- [ ] **1.0** — stable API, public Turkish benchmark, sparse/BM25 retriever, SQLite mode
+
+Details: [docs/roadmap.md](docs/roadmap.md).
 
 ## Contributing
 
