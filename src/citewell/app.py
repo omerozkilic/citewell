@@ -60,6 +60,12 @@ class Citewell:
         if meta is None:
             raise db.SchemaMismatchError("database is not initialised; run `citewell init` first")
         db.check_meta(meta, self.settings.embedding_dim, self.embedding_model_id)
+        with self.store.conn() as conn:
+            pending = db.pending_migrations(conn)
+        if pending:
+            # Migrations are additive; apply them so an upgraded install keeps working.
+            log.info("applying pending migrations: %s", ", ".join(pending))
+            self.init_db()
 
     # ------------------------------------------------------------------ models
 

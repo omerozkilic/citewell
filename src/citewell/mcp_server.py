@@ -52,7 +52,8 @@ class CitedPassage(BaseModel):
     citation: str = Field(description="Human-readable source label: file and page/section.")
     source: str
     title: str | None
-    page: int | None
+    page: int | None = Field(description="Physical page number in the PDF (1-based).")
+    page_label: str | None = Field(default=None, description="Printed page number, when it differs.")
     section: str | None
     chunk_id: str
     collection: str
@@ -89,10 +90,11 @@ class DocumentList(BaseModel):
 def _passage(hit: SearchHit) -> CitedPassage:
     return CitedPassage(
         ref=f"[{hit.rank}]",
-        citation=citation_label(hit.source, hit.page, hit.section),
+        citation=citation_label(hit.source, hit.page, hit.section, hit.page_label),
         source=hit.source,
         title=hit.title,
         page=hit.page,
+        page_label=hit.page_label,
         section=hit.section,
         chunk_id=hit.chunk_id,
         collection=hit.collection,
@@ -167,7 +169,9 @@ def build_server(app: Citewell) -> MCPServer:
         rows = app.store.neighbours(chunk_id, window=context)
         chunk = next(r for r in rows if r.chunk_id == chunk_id)
         return ChunkWithContext(
-            chunk=chunk, citation=citation_label(chunk.source, chunk.page, chunk.section), context=rows
+            chunk=chunk,
+            citation=citation_label(chunk.source, chunk.page, chunk.section, chunk.page_label),
+            context=rows,
         )
 
     @mcp.tool(title="List collections", annotations=READ_ONLY)
@@ -230,7 +234,7 @@ def build_server(app: Citewell) -> MCPServer:
     )
     def chunk_resource(chunk_id: str) -> str:
         c = app.store.get_chunk(chunk_id)
-        return f"[{citation_label(c.source, c.page, c.section)} · {c.chunk_id}]\n\n{c.text}"
+        return f"[{citation_label(c.source, c.page, c.section, c.page_label)} · {c.chunk_id}]\n\n{c.text}"
 
     @mcp.prompt(
         name="answer_with_citations",

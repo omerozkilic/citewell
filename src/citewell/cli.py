@@ -187,7 +187,7 @@ def search(
         console.print("[yellow]no results[/]")
         return
     for h in resp.hits:
-        loc = f"s. {h.page}" if h.page is not None else (h.section or "")
+        loc = h.citation.label().removeprefix(h.source).removeprefix(", ")
         where = f", {loc}" if loc else ""
         out.print(
             f"[bold cyan][{h.rank}][/] [bold]{h.source}[/]{where}  [dim]{h.chunk_id} · {h.score:.4f}[/]"

@@ -14,6 +14,7 @@ class Page(BaseModel):
     number: int | None
     text: str
     section: str | None = None
+    label: str | None = None  # printed page label from the PDF (e.g. "iv", "12"), if it differs
 
 
 class LoadedDocument(BaseModel):
@@ -28,6 +29,7 @@ class LoadedDocument(BaseModel):
 class ChunkDraft(BaseModel):
     ord: int
     page: int | None
+    page_label: str | None = None
     section: str | None
     char_start: int
     char_end: int
@@ -65,12 +67,18 @@ class Citation(BaseModel):
     source: str = Field(description="Document path relative to the ingest root (or uploaded filename).")
     title: str | None = None
     page: int | None = Field(default=None, description="1-based page number, if the format has pages.")
+    page_label: str | None = Field(default=None, description="Printed page label, if it differs.")
     section: str | None = None
     chunk_id: str
     quote: str = Field(description="Verbatim excerpt from the chunk that best matches the query.")
 
     def label(self) -> str:
-        loc = f"s. {self.page}" if self.page is not None else (self.section or "")
+        if self.page is not None:
+            loc = f"s. {self.page}"
+            if self.page_label and self.page_label != str(self.page):
+                loc = f"s. {self.page_label} (PDF s. {self.page})"
+        else:
+            loc = self.section or ""
         return f"{self.source}{', ' + loc if loc else ''}"
 
 
@@ -83,6 +91,7 @@ class SearchHit(BaseModel):
     source: str
     title: str | None
     page: int | None
+    page_label: str | None = None
     section: str | None
     text: str
     quote: str
@@ -96,6 +105,7 @@ class SearchHit(BaseModel):
             source=self.source,
             title=self.title,
             page=self.page,
+            page_label=self.page_label,
             section=self.section,
             chunk_id=self.chunk_id,
             quote=self.quote,
@@ -123,11 +133,14 @@ class ChunkRecord(BaseModel):
     char_start: int
     char_end: int
     text: str
+    page_label: str | None = None
 
 
-def citation_label(source: str, page: int | None, section: str | None) -> str:
-    """Human-readable location used in MCP answers: ``file, s. 12`` or ``file § Section``."""
+def citation_label(source: str, page: int | None, section: str | None, page_label: str | None = None) -> str:
+    """Human-readable location: ``file, s. 12``, ``file, s. iv (PDF s. 4)`` or ``file § Section``."""
     if page is not None:
+        if page_label and page_label != str(page):
+            return f"{source}, s. {page_label} (PDF s. {page})"
         return f"{source}, s. {page}"
     if section:
         return f"{source} § {section}"
@@ -150,6 +163,7 @@ class QuoteCheck(BaseModel):
     source: str | None = None
     title: str | None = None
     page: int | None = None
+    page_label: str | None = None
     section: str | None = None
     chunk_id: str | None = None
     collection: str | None = None

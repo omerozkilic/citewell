@@ -154,6 +154,7 @@ class SearchService:
                     source=rec.source,
                     title=rec.title,
                     page=rec.page,
+                    page_label=rec.page_label,
                     section=rec.section,
                     text=rec.text,
                     quote=best_quote(

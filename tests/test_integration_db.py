@@ -468,3 +468,35 @@ def test_verify_quote_rest_and_cli(client: Any, citewell: Citewell, monkeypatch:
         assert bad.exit_code == 4
     finally:
         config.get_settings.cache_clear()
+
+
+def test_page_labels_end_to_end(citewell: Citewell, tmp_path: Any) -> None:
+    from citewell.mcp_server import _passage
+
+    from .test_loaders import _labelled_pdf
+
+    pdf = tmp_path / "kitap.pdf"
+    _labelled_pdf(pdf)
+    assert citewell.ingest.ingest_paths([pdf], collection="labels-test")[0].status == "ingested"
+    hit = citewell.search.search(
+        SearchRequest(query="Birinci bolum metni", collections=["labels-test"], top_k=1, mode="keyword")
+    ).hits[0]
+    assert (hit.page, hit.page_label) == (3, "1")
+    assert _passage(hit).citation == "kitap.pdf, s. 1 (PDF s. 3)"
+    check = citewell.verifier.verify("Birinci bolum metni.", chunk_id=hit.chunk_id)
+    assert check.citation == "kitap.pdf, s. 1 (PDF s. 3)"
+    citewell.store.delete_collection("labels-test")
+
+
+def test_pending_migrations_are_applied_on_startup(citewell: Citewell) -> None:
+    from citewell import db
+
+    with citewell.store.conn() as conn:
+        conn.execute("DELETE FROM citewell_migrations WHERE version = 2")
+        conn.execute("ALTER TABLE chunks DROP COLUMN page_label")
+        conn.commit()
+        assert db.pending_migrations(conn) == ["0002_page_labels.sql"]
+    citewell.check_schema()  # an upgraded install: applies 0002 instead of failing
+    with citewell.store.conn() as conn:
+        assert db.pending_migrations(conn) == []
+    assert citewell.search.search(SearchRequest(query="parola", top_k=1)).hits

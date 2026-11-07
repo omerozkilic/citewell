@@ -39,7 +39,8 @@ Claude ▸ (calls citewell.search_documents)
 
 - **Cited, verifiable passages** — page-aware chunking that never crosses page boundaries, verbatim
   quotes, stable chunk ids ([ADR-0006](docs/adr/0006-page-aware-chunking.md)), and a `verify_quote`
-  tool so assistants can check a quotation against the source before presenting it.
+  tool so assistants can check a quotation against the source before presenting it. Printed page
+  numbers from the PDF are shown when they differ from the physical page (`s. 12 (PDF s. 17)`).
 - **MCP-native** — stdio for desktop clients, Streamable HTTP at `/mcp`, structured tool output,
   resources and a citation prompt. Read-only by design ([ADR-0007](docs/adr/0007-read-only-mcp.md)).
 - **Hybrid search** — pgvector (HNSW) + PostgreSQL full-text search fused with Reciprocal Rank Fusion,
