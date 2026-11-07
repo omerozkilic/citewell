@@ -113,3 +113,9 @@ class IngestService:
             if on_result:
                 on_result(res)
         return results
+
+    def stale_sources(self, collection: str | None, seen: Iterable[str]) -> list[str]:
+        """Documents in ``collection`` whose source was not part of this ingest run."""
+        keep = set(seen)
+        name = collection or self.settings.default_collection
+        return [d.source for d in self.store.list_documents(name) if d.source not in keep]
