@@ -108,6 +108,7 @@ def chunk_pages(
                 ChunkDraft(
                     ord=len(drafts),
                     page=page.number,
+                    page_label=page.label,
                     section=page.section,
                     char_start=start,
                     char_end=end,

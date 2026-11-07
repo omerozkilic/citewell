@@ -48,7 +48,7 @@ class RetrievedId:
 
 _CHUNK_SELECT = """
     SELECT c.id AS chunk_id, col.name AS collection, c.document_id, d.source, d.title,
-           c.ord, c.page, c.section, c.char_start, c.char_end, c.text
+           c.ord, c.page, c.page_label, c.section, c.char_start, c.char_end, c.text
     FROM chunks c
     JOIN documents d ON d.id = c.document_id
     JOIN collections col ON col.id = c.collection_id
@@ -173,9 +173,9 @@ class Store:
             with conn.cursor() as cur:
                 cur.executemany(
                     """
-                    INSERT INTO chunks (id, document_id, collection_id, ord, page, section,
+                    INSERT INTO chunks (id, document_id, collection_id, ord, page, page_label, section,
                                         char_start, char_end, text, tsv, embedding)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, to_tsvector(%s::regconfig, %s), %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, to_tsvector(%s::regconfig, %s), %s)
                     """,
                     [
                         (
@@ -184,6 +184,7 @@ class Store:
                             collection.id,
                             ch.ord,
                             ch.page,
+                            ch.page_label,
                             ch.section,
                             ch.char_start,
                             ch.char_end,

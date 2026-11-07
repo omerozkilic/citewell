@@ -312,10 +312,11 @@ def _to_check(quote: str, m: Match, searched: int) -> QuoteCheck:
     return base.model_copy(
         update={
             "source_text": m.source_text,
-            "citation": citation_label(chunk.source, chunk.page, chunk.section),
+            "citation": citation_label(chunk.source, chunk.page, chunk.section, chunk.page_label),
             "source": chunk.source,
             "title": chunk.title,
             "page": chunk.page,
+            "page_label": chunk.page_label,
             "section": chunk.section,
             "chunk_id": chunk.chunk_id,
             "collection": chunk.collection,

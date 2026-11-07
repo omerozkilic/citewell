@@ -78,7 +78,7 @@ Run `citewell doctor` at any time to check the database, pgvector version, schem
 
 | Format | Location in citations |
 |---|---|
-| PDF (text layer) | page number |
+| PDF (text layer) | page number; plus the printed page label when the PDF defines one that differs (e.g. `s. 12 (PDF s. 17)`, `s. iv`) |
 | Plain text | page number if the file contains form feeds (`pdftotext` output), otherwise none |
 | Markdown | heading path, e.g. `Bilgi Güvenliği Politikası > Parola Kuralları` |
 | DOCX (`citewell[docx]`) | heading |

@@ -104,3 +104,32 @@ def test_pdf_pages_without_text_are_counted(tmp_path: Path) -> None:
     assert [p.number for p in doc.pages] == [1, 3]
     assert doc.metadata["total_pages"] == 3
     assert doc.metadata["pages_without_text"] == 1
+
+
+def _labelled_pdf(path: Path) -> None:
+    """4 pages: roman front matter (i, ii), then the body numbered from 1."""
+    from pypdf import PdfReader, PdfWriter
+    from reportlab.pdfgen import canvas
+
+    raw = path.with_suffix(".raw.pdf")
+    c = canvas.Canvas(str(raw))
+    for text in ("Onsoz metni.", "Icindekiler metni.", "Birinci bolum metni.", "Ikinci bolum metni."):
+        c.drawString(72, 750, text)
+        c.showPage()
+    c.save()
+    writer = PdfWriter(clone_from=PdfReader(raw))
+    writer.set_page_label(0, 1, style="/r")
+    writer.set_page_label(2, 3, style="/D", start=1)
+    writer.write(path)
+
+
+def test_pdf_page_labels(tmp_path: Path) -> None:
+    pdf = tmp_path / "kitap.pdf"
+    _labelled_pdf(pdf)
+    doc = load_file(pdf)
+    assert [(p.number, p.label) for p in doc.pages] == [(1, "i"), (2, "ii"), (3, "1"), (4, "2")]
+
+
+def test_pdf_without_labels_has_none() -> None:
+    doc = load_file(CORPUS / "calisan-el-kitabi.pdf")
+    assert all(p.label is None for p in doc.pages)
