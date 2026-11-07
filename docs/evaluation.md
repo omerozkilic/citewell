@@ -61,6 +61,13 @@ Apple Silicon (MPS), latency measured after model warm-up:
 Small and single-domain; KVKK and Constitution questions were not included in this run.
 Contributions of real-world eval sets (with permissively licensed documents) are very welcome.
 
+## Queries without Turkish characters
+
+`examples/eval/tr-sample-ascii.jsonl` repeats the handbook questions typed without Turkish
+characters (`Haftalik standart calisma suresi kac saat?`). Keyword search runs on a
+diacritic-folded index; on this set (hash test embedder) it lifted keyword Recall@5 from 0.829 to
+0.943 and hybrid MRR@5 from 0.808 to 0.907. CI checks it on every push.
+
 ## Turkish legislation set
 
 `examples/eval/mevzuat-questions.jsonl` contains 35 questions about the Labour Law (4857), the

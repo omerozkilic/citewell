@@ -18,7 +18,7 @@ from psycopg_pool import ConnectionPool
 from citewell import db
 from citewell.embeddings import Vector
 from citewell.models import ChunkDraft, ChunkRecord, Collection, DocumentInfo, LoadedDocument
-from citewell.text import tr_lower
+from citewell.text import fold, tr_lower
 
 COLLECTION_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
@@ -174,8 +174,9 @@ class Store:
                 cur.executemany(
                     """
                     INSERT INTO chunks (id, document_id, collection_id, ord, page, page_label, section,
-                                        char_start, char_end, text, tsv, embedding)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, to_tsvector(%s::regconfig, %s), %s)
+                                        char_start, char_end, text, tsv, tsv_folded, embedding)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                            to_tsvector(%s::regconfig, %s), to_tsvector(%s::regconfig, %s), %s)
                     """,
                     [
                         (
@@ -191,6 +192,8 @@ class Store:
                             ch.text,
                             collection.language,
                             tr_lower(" ".join(filter(None, [ch.section, ch.text])), collection.language),
+                            collection.language,
+                            fold(" ".join(filter(None, [ch.section, ch.text])), collection.language),
                             np.asarray(emb, dtype=np.float32),
                         )
                         for ch, emb in zip(chunks, embeddings, strict=True)
@@ -314,11 +317,11 @@ class Store:
         hits.sort(key=lambda h: -h.score)
         return hits
 
-    def query_lexemes(self, query: str, language: str) -> list[str]:
+    def query_lexemes(self, query: str, language: str, folded: bool = False) -> list[str]:
+        text = fold(query, language) if folded else tr_lower(query, language)
         with self.conn() as conn:
             rows = conn.execute(
-                "SELECT lexeme FROM unnest(to_tsvector(%s::regconfig, %s))",
-                (language, tr_lower(query, language)),
+                "SELECT lexeme FROM unnest(to_tsvector(%s::regconfig, %s))", (language, text)
             ).fetchall()
         return [str(r[0]) for r in rows]
 
@@ -329,16 +332,19 @@ class Store:
         collection_ids: Sequence[int],
         limit: int,
         source_prefix: str | None = None,
+        folded: bool = False,
     ) -> list[RetrievedId]:
         """Full-text search with OR semantics over stemmed lexemes, ranked by ``ts_rank_cd``.
 
         Natural-language questions rarely contain *all* terms of the answer, so the
         query is turned into ``lex1 | lex2 | …`` instead of ``websearch_to_tsquery``'s AND.
+        With ``folded`` the diacritic-folded index is used, so "ogrenci" matches "öğrenci".
         """
-        lexemes = self.query_lexemes(query, language)
+        lexemes = self.query_lexemes(query, language, folded=folded)
         if not lexemes:
             return []
-        where = ["c.collection_id = ANY(%(cols)s)", "c.tsv @@ q.query"]
+        column = "c.tsv_folded" if folded else "c.tsv"
+        where = ["c.collection_id = ANY(%(cols)s)", f"{column} @@ q.query"]
         params: dict[str, Any] = {
             "tsq": _tsquery_literal(lexemes),
             "cols": list(collection_ids),
@@ -349,7 +355,7 @@ class Store:
             params["src"] = _like_prefix(source_prefix)
         sql = f"""
             WITH q AS (SELECT %(tsq)s::tsquery AS query)
-            SELECT c.id, ts_rank_cd(c.tsv, q.query, 1) AS score
+            SELECT c.id, ts_rank_cd({column}, q.query, 1) AS score
             FROM chunks c JOIN documents d ON d.id = c.document_id, q
             WHERE {" AND ".join(where)}
             ORDER BY score DESC, c.id

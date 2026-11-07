@@ -106,7 +106,9 @@ class SearchService:
             for c in collections:
                 by_lang.setdefault(c.language, []).append(c.id)
             for lang, ids in by_lang.items():
-                kw_hits = self.store.keyword_search(query, lang, ids, pool, req.source_prefix)
+                kw_hits = self.store.keyword_search(
+                    query, lang, ids, pool, req.source_prefix, folded=self.settings.fold_diacritics
+                )
                 rankings.append([h.chunk_id for h in kw_hits])
                 for rank, h in enumerate(kw_hits, start=1):
                     per_ret.setdefault(h.chunk_id, {}).update({"keyword": h.score, "keyword_rank": rank})
