@@ -296,7 +296,7 @@ All settings are environment variables prefixed with `CITEWELL_` (or a `.env` fi
 - [ ] **0.4** — OpenAI-compatible endpoint (Open WebUI), per-collection tokens
 - [ ] **1.0** — stable API, public Turkish benchmark, sparse/BM25 retriever, SQLite mode
 
-Details: [docs/roadmap.md](docs/roadmap.md).
+Details: [docs/roadmap.md](docs/roadmap.md) · progress in the [Roadmap issue](https://github.com/omerozkilic/citewell/issues/31) — `good first issue` and `help wanted` items are open for contributors.
 
 ## Contributing
 
