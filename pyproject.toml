@@ -1,6 +1,6 @@
 [project]
 name = "citewell"
-version = "0.1.1"
+version = "0.2.0"
 description = "Citation-grounded document memory for AI assistants. Offline, MCP-native, Turkish-ready."
 readme = "README.md"
 license = "MIT"
