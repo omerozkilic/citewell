@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.0](https://github.com/omerozkilic/citewell/compare/v0.1.1...v0.2.0) (2026-11-08)
+
+
+### Features
+
+* MCP collection-name completion and ingest --prune ([b2946b5](https://github.com/omerozkilic/citewell/commit/b2946b535d8dec1fdeec46e7e225f9f3c08a4103))
+* show printed PDF page labels in citations ([d4c6699](https://github.com/omerozkilic/citewell/commit/d4c669984271ecfa43b5ad6a96751f8b980b934b))
+* Turkish search works without Turkish characters ([1b43c80](https://github.com/omerozkilic/citewell/commit/1b43c805cfdd273988a844103f440397933f1e2c))
+* verify_quote tool checks quotations against the source ([4ee420d](https://github.com/omerozkilic/citewell/commit/4ee420deae15d09e1d656b84424306d8fc3a6cae))
+
+
+### Documentation
+
+* install from PyPI with uv tool; pin workflow actions to commit SHAs ([88f7a2d](https://github.com/omerozkilic/citewell/commit/88f7a2de6abb941d78d66bf35a9614e16e6844eb))
+* link roadmap items to GitHub issues and milestones ([2787350](https://github.com/omerozkilic/citewell/commit/278735042aa5d39cd2784c7f1967d5c6b2bc7209))
+
 ## [0.1.1](https://github.com/omerozkilic/citewell/compare/v0.1.0...v0.1.1) (2026-11-03)
 
 
