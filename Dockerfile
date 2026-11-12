@@ -44,6 +44,11 @@ LABEL org.opencontainers.image.title="citewell" \
       org.opencontainers.image.source="https://github.com/omerozkilic/citewell" \
       org.opencontainers.image.licenses="MIT"
 
+# Pick up Debian security fixes published after the base image was built.
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN useradd --create-home --uid 1000 citewell \
  && mkdir -p /models /data \
  && chown citewell:citewell /models /data
