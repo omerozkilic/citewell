@@ -732,3 +732,106 @@ def test_cli_eval_baseline_roundtrip(
         assert runner.invoke(app, [*args, "--baseline", str(path)]).exit_code == 1
     finally:
         config.get_settings.cache_clear()
+
+
+def test_watch_keeps_a_collection_in_sync(citewell: Citewell, tmp_path: Any) -> None:
+    import os
+
+    from citewell.watch import Watcher
+
+    # Own instance: an earlier CLI test closes the shared fixture's connection pool.
+    cw = Citewell(make_settings())
+    try:
+        note = tmp_path / "not.md"
+        note.write_text("# Not\n\nYıllık izin başvurusu yönetici onayı ile tamamlanır.", encoding="utf-8")
+        watcher = Watcher(cw.ingest, cw.store, [tmp_path], "watch-test", "turkish", prune=True)
+        first = watcher.poll(initial=True)
+        assert [e.kind for e in first] == ["ingested"], first
+        assert [d.source for d in cw.store.list_documents("watch-test")] == ["not.md"]
+        hits = cw.search.search(SearchRequest(query="yıllık izin başvurusu", collections=["watch-test"])).hits
+        assert hits and hits[0].source == "not.md"
+
+        note.write_text("# Not\n\nSeyahat masrafları fatura ile iade edilir.", encoding="utf-8")
+        os.utime(note, ns=(2 * 10**18, 2 * 10**18))
+        watcher.poll()
+        assert [e.kind for e in watcher.poll()] == ["ingested"]
+
+        note.unlink()
+        watcher.poll()
+        assert [e.kind for e in watcher.poll()] == ["removed"]
+        assert cw.store.list_documents("watch-test") == []
+    finally:
+        cw.close()
+
+
+def _watch_cli(monkeypatch: pytest.MonkeyPatch, tmp_path: Any, fake_run: Any) -> Any:
+    from typer.testing import CliRunner
+
+    from citewell import config
+    from citewell.cli import app
+
+    monkeypatch.setattr("citewell.watch.run_watch", fake_run)
+    monkeypatch.setenv("CITEWELL_DATABASE_URL", make_settings().database_url)
+    monkeypatch.setenv("CITEWELL_EMBEDDING_BACKEND", "hash")
+    monkeypatch.setenv("CITEWELL_EMBEDDING_DIM", "256")
+    config.get_settings.cache_clear()
+    try:
+        return CliRunner().invoke(app, ["watch", str(tmp_path), "-c", "watch-test"])
+    finally:
+        config.get_settings.cache_clear()
+
+
+def test_cli_watch_prints_events(citewell: Citewell, tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    from citewell.watch import WatchEvent
+
+    def fake_run(watcher: Any, interval: float, on_event: Any) -> None:
+        on_event(WatchEvent("ingested", "a.md", "2 chunks"))
+        on_event(WatchEvent("unchanged", "b.md"))
+        on_event(WatchEvent("error", "c.md", "ValueError: bad"))
+        on_event(WatchEvent("removed", "d.md"))
+
+    result = _watch_cli(monkeypatch, tmp_path, fake_run)
+    assert result.exit_code == 0, result.output
+    assert "ingested a.md — 2 chunks" in result.output
+    assert "error c.md — ValueError: bad" in result.output
+    assert "removed d.md" in result.output
+    assert "b.md" not in result.output  # unchanged files are not news
+
+
+def test_cli_watch_reports_failures(
+    citewell: Citewell, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fake_run(*_: Any, **__: Any) -> None:
+        raise RuntimeError("index unavailable")
+
+    result = _watch_cli(monkeypatch, tmp_path, fake_run)
+    assert result.exit_code == 1
+    assert "index unavailable" in result.output
+
+
+def test_cli_watch_stops_cleanly(citewell: Citewell, tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    def interrupted(*_: Any, **__: Any) -> None:
+        raise KeyboardInterrupt
+
+    result = _watch_cli(monkeypatch, tmp_path, interrupted)
+    assert result.exit_code == 0, result.output
+    assert "watching" in result.output and "stopped" in result.output
+
+
+def test_table_values_are_retrievable_with_pdf_tables(citewell: Citewell, tmp_path: Any) -> None:
+    pytest.importorskip("pdfplumber")
+    from .test_pdf_tables import FEES, PROSE, _pdf
+
+    pdf = tmp_path / "tarife.pdf"
+    pdf.write_bytes(_pdf([PROSE], ["Tarife", FEES, "Yilda bir guncellenir."]))
+    cw = Citewell(make_settings(pdf_tables=True))
+    try:
+        results = cw.ingest.ingest_paths([pdf], collection="tables-test")
+        assert [r.status for r in results] == ["ingested"]
+        hits = cw.search.search(
+            SearchRequest(query="basvuru ucreti 1500", collections=["tables-test"], mode="keyword")
+        ).hits
+        assert hits and hits[0].page == 2
+        assert "| Basvuru ucreti | 1500 | 5 gun |" in hits[0].text
+    finally:
+        cw.close()

@@ -92,6 +92,10 @@ class Settings(BaseSettings):
         default=None,
         description="When set, REST and HTTP MCP endpoints require 'Authorization: Bearer <token>'.",
     )
+    pdf_tables: bool = Field(
+        default=False,
+        description="Render ruled tables in PDFs as Markdown rows (needs `pip install 'citewell[tables]'`).",
+    )
     max_upload_mb: int = 50
     max_document_pages: int = Field(
         default=5000, ge=0, description="Reject PDFs with more pages (0 = no limit)."

@@ -55,6 +55,7 @@ to start with a different configuration rather than silently mixing incompatible
 | `CITEWELL_API_TOKEN` | unset | bearer token for REST and HTTP MCP |
 | `CITEWELL_ALLOWED_HOSTS` | `[]` | extra `Host` values for DNS-rebinding protection, JSON list, e.g. `["citewell:*"]` |
 | `CITEWELL_MAX_UPLOAD_MB` | `50` | |
+| `CITEWELL_PDF_TABLES` | `false` | Render ruled tables in PDFs as Markdown rows. Needs `pip install 'citewell[tables]'`; see [Tables in PDFs](getting-started.md#tables-in-pdfs). |
 | `CITEWELL_MAX_DOCUMENT_PAGES` | `5000` | Reject PDFs with more pages (`0` = no limit). |
 | `CITEWELL_MAX_UNPACKED_MB` / `_MAX_ZIP_RATIO` | `200` / `200` | Reject DOCX files that unpack to more than this size or compress more than this ratio (zip bombs). |
 | `CITEWELL_LOG_LEVEL` | `INFO` | |

@@ -92,3 +92,24 @@ Run `citewell doctor` at any time to check the database, pgvector version, schem
 PPTX, XLSX, CSV, EPUB and EML need no extra install. Legacy binary Office files (`.doc`, `.xls`, `.ppt`) are not supported.
 
 Scanned PDFs without a text layer are reported as `skipped`; OCR is on the roadmap.
+
+### Tables in PDFs
+
+By default a table comes out of the PDF text layer as one jumbled line (`Ucret (TL) Sure Basvuru ucreti 1500 5 gun …`),
+which is hard to retrieve and to quote. With the `tables` extra and `CITEWELL_PDF_TABLES=true`, ruled tables are
+indexed as Markdown rows in reading order, between the text around them:
+
+```text
+| Hizmet | Ucret (TL) | Sure |
+| --- | --- | --- |
+| Basvuru ucreti | 1500 | 5 gun |
+```
+
+```bash
+pip install 'citewell[tables]'          # or: uv tool install "citewell[models,tables]"
+CITEWELL_PDF_TABLES=true citewell ingest ./tarifeler
+```
+
+Only tables drawn with ruling lines are detected, and pages without one are indexed exactly as before.
+Chunks still never cross a page and stay verbatim slices of the page text; a long table is split between rows.
+Re-ingest with `--force` after turning the option on, because unchanged files are skipped by content hash.
