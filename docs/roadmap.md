@@ -33,11 +33,15 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
 - [ ] `citewell doctor`: diagnose the install ([#35](https://github.com/omerozkilic/citewell/issues/35))
 - [ ] More loaders: EPUB, PPTX, XLSX/CSV, EML ([#36](https://github.com/omerozkilic/citewell/issues/36))
 - [ ] CI eval regression gate ([#38](https://github.com/omerozkilic/citewell/issues/38))
+- [ ] Security: Query limits and DB statement timeout ([#48](https://github.com/omerozkilic/citewell/issues/48))
+- [ ] Security: Container hardening in compose.yaml ([#49](https://github.com/omerozkilic/citewell/issues/49))
+- [ ] Security: Supply chain: pip-audit, SBOM and build provenance ([#50](https://github.com/omerozkilic/citewell/issues/50))
+- [ ] Security: Parser hardening and model revision pinning ([#51](https://github.com/omerozkilic/citewell/issues/51))
 
 ## 0.4 — UI bridge & sharing
 - [ ] OpenAI-compatible `/v1/chat/completions` adapter so UIs like Open WebUI can use Citewell ([#23](https://github.com/omerozkilic/citewell/issues/23))
   (generation delegated to a user-configured model; the core stays LLM-free — needs an ADR)
-- [ ] Per-collection tokens / read scopes for the HTTP endpoint ([#24](https://github.com/omerozkilic/citewell/issues/24))
+- [ ] Per-collection tokens / read scopes for the HTTP endpoint ([#24](https://github.com/omerozkilic/citewell/issues/24)) — also covers rate limiting and an optional audit log
 - [ ] Progress notifications for long MCP operations ([#25](https://github.com/omerozkilic/citewell/issues/25))
 - [ ] Metadata filters in search ([#39](https://github.com/omerozkilic/citewell/issues/39))
 - [ ] Export citations (BibTeX, CSL-JSON, Markdown footnotes) ([#40](https://github.com/omerozkilic/citewell/issues/40))
