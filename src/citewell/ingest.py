@@ -76,6 +76,9 @@ class IngestService:
             message=warning,
         )
 
+    def _load(self, data: bytes, source: str) -> LoadedDocument:
+        return load_bytes(data, source, limits=self._limits(), pdf_tables=self.settings.pdf_tables)
+
     def _limits(self) -> LoadLimits:
         s = self.settings
         return LoadLimits(
@@ -94,7 +97,7 @@ class IngestService:
     ) -> IngestResult:
         col = self.collection(collection, language)
         try:
-            doc = load_bytes(data, source, limits=self._limits())
+            doc = self._load(data, source)
         except UnsupportedFormatError as exc:
             return IngestResult(source=source, status="error", message=str(exc))
         return self.ingest_document(doc, col, force=force)
@@ -112,7 +115,9 @@ class IngestService:
         results: list[IngestResult] = []
         for path, source in iter_files(paths, recursive=recursive):
             try:
-                doc = load_bytes(path.read_bytes(), source, limits=self._limits())
+                doc = load_bytes(
+                    path.read_bytes(), source, limits=self._limits(), pdf_tables=self.settings.pdf_tables
+                )
                 res = self.ingest_document(doc, col, force=force)
             except Exception as exc:  # keep going; report per-file errors
                 log.exception("failed to ingest %s", path)

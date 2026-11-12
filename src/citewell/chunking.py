@@ -17,7 +17,7 @@ from dataclasses import dataclass
 
 from citewell.models import ChunkDraft, Page
 
-_BOUNDARY_RE = re.compile(r"(?<=[.!?…:;])\s+|\n\s*\n|\n(?=\s*(?:[-*•]|\d+[.)])\s)")
+_BOUNDARY_RE = re.compile(r"(?<=[.!?…:;])\s+|\n\s*\n|\n(?=\s*(?:[-*•]|\d+[.)])\s)|\n(?=\|)")
 
 
 @dataclass(frozen=True, slots=True)

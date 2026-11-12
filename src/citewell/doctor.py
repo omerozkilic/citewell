@@ -170,6 +170,23 @@ def _model_check(name: str, model: str) -> Check:
     return Check(name, "warn", f"{model} (not cached yet)", "Run `citewell models download`.")
 
 
+def check_pdf_tables(s: Settings) -> list[Check]:
+    if not s.pdf_tables:
+        return []
+    try:
+        import pdfplumber  # noqa: F401
+    except ImportError:
+        return [
+            Check(
+                "pdf tables",
+                "fail",
+                "CITEWELL_PDF_TABLES is on but pdfplumber is not installed",
+                "Install it with `pip install 'citewell[tables]'` or turn the setting off.",
+            )
+        ]
+    return [Check("pdf tables", "ok", "ruled tables are indexed as Markdown rows")]
+
+
 def check_server(s: Settings) -> list[Check]:
     if s.api_token:
         return [Check("api token", "ok", "set")]
@@ -192,6 +209,7 @@ def run_checks(s: Settings) -> list[Check]:
     ]
     checks += check_database(s)
     checks += check_models(s)
+    checks += check_pdf_tables(s)
     checks += check_server(s)
     return checks
 
