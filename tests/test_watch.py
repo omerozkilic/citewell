@@ -138,3 +138,43 @@ def test_unsupported_directory_is_an_error(tmp_path: Path) -> None:
     w, _, _ = _watcher(tmp_path / "missing")
     with pytest.raises(FileNotFoundError):
         w.poll(initial=True)
+
+
+def test_failed_removal_is_reported_as_an_error(tmp_path: Path) -> None:
+    _write(tmp_path / "a.md", "x", 1)
+    w, _, store = _watcher(tmp_path, prune=True)
+    w.poll(initial=True)
+
+    def broken(collection: str, source: str) -> bool:
+        raise RuntimeError("db down")
+
+    store.delete_document = broken  # type: ignore[method-assign]
+    (tmp_path / "a.md").unlink()
+    w.poll()
+    events = w.poll()
+    assert [(e.kind, e.source) for e in events] == [("error", "a.md")]
+    assert "db down" in events[0].detail
+
+
+def test_file_vanishing_between_listing_and_stat_is_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "citewell.watch.iter_files", lambda paths, recursive=True: [(tmp_path / "gone.md", "gone.md")]
+    )
+    assert take_snapshot([tmp_path]) == {}
+
+
+def test_run_watch_reports_files_that_appear_later(tmp_path: Path) -> None:
+    w, _, _ = _watcher(tmp_path)
+    seen: list[WatchEvent] = []
+    calls = 0
+
+    def sleep(_: float) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            _write(tmp_path / "late.md", "hello", 20)
+
+    run_watch(w, interval=0.1, on_event=seen.append, max_polls=3, sleep=sleep)
+    assert [e.source for e in seen] == ["late.md"]

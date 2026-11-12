@@ -764,23 +764,55 @@ def test_watch_keeps_a_collection_in_sync(citewell: Citewell, tmp_path: Any) -> 
         cw.close()
 
 
-def test_cli_watch_stops_cleanly(citewell: Citewell, tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+def _watch_cli(monkeypatch: pytest.MonkeyPatch, tmp_path: Any, fake_run: Any) -> Any:
     from typer.testing import CliRunner
 
     from citewell import config
     from citewell.cli import app
 
-    def interrupted(*_: Any, **__: Any) -> None:
-        raise KeyboardInterrupt
-
-    monkeypatch.setattr("citewell.watch.run_watch", interrupted)
+    monkeypatch.setattr("citewell.watch.run_watch", fake_run)
     monkeypatch.setenv("CITEWELL_DATABASE_URL", make_settings().database_url)
     monkeypatch.setenv("CITEWELL_EMBEDDING_BACKEND", "hash")
     monkeypatch.setenv("CITEWELL_EMBEDDING_DIM", "256")
     config.get_settings.cache_clear()
     try:
-        result = CliRunner().invoke(app, ["watch", str(tmp_path), "-c", "watch-test"])
+        return CliRunner().invoke(app, ["watch", str(tmp_path), "-c", "watch-test"])
     finally:
         config.get_settings.cache_clear()
+
+
+def test_cli_watch_prints_events(citewell: Citewell, tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    from citewell.watch import WatchEvent
+
+    def fake_run(watcher: Any, interval: float, on_event: Any) -> None:
+        on_event(WatchEvent("ingested", "a.md", "2 chunks"))
+        on_event(WatchEvent("unchanged", "b.md"))
+        on_event(WatchEvent("error", "c.md", "ValueError: bad"))
+        on_event(WatchEvent("removed", "d.md"))
+
+    result = _watch_cli(monkeypatch, tmp_path, fake_run)
+    assert result.exit_code == 0, result.output
+    assert "ingested a.md — 2 chunks" in result.output
+    assert "error c.md — ValueError: bad" in result.output
+    assert "removed d.md" in result.output
+    assert "b.md" not in result.output  # unchanged files are not news
+
+
+def test_cli_watch_reports_failures(
+    citewell: Citewell, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fake_run(*_: Any, **__: Any) -> None:
+        raise RuntimeError("index unavailable")
+
+    result = _watch_cli(monkeypatch, tmp_path, fake_run)
+    assert result.exit_code == 1
+    assert "index unavailable" in result.output
+
+
+def test_cli_watch_stops_cleanly(citewell: Citewell, tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    def interrupted(*_: Any, **__: Any) -> None:
+        raise KeyboardInterrupt
+
+    result = _watch_cli(monkeypatch, tmp_path, interrupted)
     assert result.exit_code == 0, result.output
     assert "watching" in result.output and "stopped" in result.output
