@@ -292,7 +292,7 @@ All settings are environment variables prefixed with `CITEWELL_` (or a `.env` fi
   cited passages over CLI / REST / MCP, collections, Docker, Turkish eval sets
 - [x] **0.2** — PyPI install, `verify_quote`, printed page labels, search without Turkish
   characters, MCP completions, `ingest --prune`
-- [ ] **0.3** — OCR for scanned PDFs, better tables, `citewell watch`
+- [ ] **0.3** — OCR for scanned PDFs, better tables, `citewell watch`, more loaders, `doctor`
 - [ ] **0.4** — OpenAI-compatible endpoint (Open WebUI), per-collection tokens
 - [ ] **1.0** — stable API, public Turkish benchmark, sparse/BM25 retriever, SQLite mode
 

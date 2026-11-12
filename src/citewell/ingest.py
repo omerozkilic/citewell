@@ -11,6 +11,7 @@ from citewell.config import Settings
 from citewell.embeddings import Embedder
 from citewell.loaders import LoadLimits, UnsupportedFormatError, iter_files, load_bytes
 from citewell.models import ChunkDraft, Collection, IngestResult, LoadedDocument
+from citewell.ocr import OcrOptions
 from citewell.store import Store
 
 log = logging.getLogger(__name__)
@@ -56,16 +57,15 @@ class IngestService:
             return IngestResult(
                 source=doc.source,
                 status="skipped",
-                message="no extractable text (scanned PDF? OCR is not supported yet)",
+                message=self._no_text_message("no extractable text"),
             )
         vectors = self.embedder.embed_documents([embedding_text(doc, c) for c in chunks])
         doc_id = self.store.replace_document(collection, doc, chunks, vectors)
         pages = len({c.page for c in chunks if c.page is not None})
         warning = None
         if missing:
-            warning = (
-                f"{missing}/{total} pages have no extractable text (scanned images?) and are not "
-                "searchable; OCR is not supported yet"
+            warning = self._no_text_message(
+                f"{missing}/{total} pages have no extractable text (scanned images?) and are not searchable"
             )
         return IngestResult(
             source=doc.source,
@@ -76,8 +76,25 @@ class IngestService:
             message=warning,
         )
 
+    def _no_text_message(self, what: str) -> str:
+        if self.settings.ocr == "off":
+            return f"{what}; set CITEWELL_OCR=auto to run OCR on scanned pages"
+        return f"{what}, even with OCR (CITEWELL_OCR_MAX_PAGES={self.settings.ocr_max_pages})"
+
+    def ocr_options(self) -> OcrOptions | None:
+        s = self.settings
+        if s.ocr == "off":
+            return None
+        return OcrOptions(s.ocr_languages, s.ocr_dpi, s.ocr_timeout_s, s.ocr_max_pages)
+
     def _load(self, data: bytes, source: str) -> LoadedDocument:
-        return load_bytes(data, source, limits=self._limits(), pdf_tables=self.settings.pdf_tables)
+        return load_bytes(
+            data,
+            source,
+            limits=self._limits(),
+            pdf_tables=self.settings.pdf_tables,
+            ocr=self.ocr_options(),
+        )
 
     def _limits(self) -> LoadLimits:
         s = self.settings
@@ -115,9 +132,7 @@ class IngestService:
         results: list[IngestResult] = []
         for path, source in iter_files(paths, recursive=recursive):
             try:
-                doc = load_bytes(
-                    path.read_bytes(), source, limits=self._limits(), pdf_tables=self.settings.pdf_tables
-                )
+                doc = self._load(path.read_bytes(), source)
                 res = self.ingest_document(doc, col, force=force)
             except Exception as exc:  # keep going; report per-file errors
                 log.exception("failed to ingest %s", path)

@@ -835,3 +835,50 @@ def test_table_values_are_retrievable_with_pdf_tables(citewell: Citewell, tmp_pa
         assert "| Basvuru ucreti | 1500 | 5 gun |" in hits[0].text
     finally:
         cw.close()
+
+
+def test_scanned_pages_are_searchable_with_ocr_and_listed(
+    citewell: Citewell, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from .test_ocr import FakeSession, _pdf
+
+    FakeSession.instances, FakeSession.fail = [], False
+    monkeypatch.setattr("citewell.loaders.OcrSession", FakeSession)
+    pdf = tmp_path / "tarama.pdf"
+    pdf.write_bytes(_pdf({1}, 3))
+    plain = Citewell(make_settings())
+    scanning = Citewell(make_settings(ocr="auto"))
+    try:
+        # Off by default: only the page with a text layer is indexed, and the user is told how to fix it.
+        first = plain.ingest.ingest_paths([pdf], collection="ocr-test")[0]
+        assert first.status == "ingested" and "CITEWELL_OCR=auto" in (first.message or "")
+        assert plain.store.list_documents("ocr-test")[0].ocr_pages is None
+
+        second = scanning.ingest.ingest_paths([pdf], collection="ocr-test", force=True)[0]
+        assert second.status == "ingested" and second.message is None
+        (doc,) = scanning.store.list_documents("ocr-test")
+        assert doc.ocr_pages == [2, 3] and doc.pages_without_text == 0
+        hits = scanning.search.search(
+            SearchRequest(query="Taranmis sayfa 3 metni", collections=["ocr-test"], mode="keyword")
+        ).hits
+        assert hits and hits[0].page == 3
+    finally:
+        plain.close()
+        scanning.close()
+
+
+def test_documents_list_shows_ocr_pages(citewell: Citewell, monkeypatch: pytest.MonkeyPatch) -> None:
+    from typer.testing import CliRunner
+
+    from citewell import config
+    from citewell.cli import app
+
+    monkeypatch.setenv("CITEWELL_DATABASE_URL", make_settings().database_url)
+    monkeypatch.setenv("CITEWELL_EMBEDDING_BACKEND", "hash")
+    monkeypatch.setenv("CITEWELL_EMBEDDING_DIM", "256")
+    config.get_settings.cache_clear()
+    try:
+        result = CliRunner().invoke(app, ["documents", "list", "-c", "ocr-test"])
+    finally:
+        config.get_settings.cache_clear()
+    assert result.exit_code == 0 and "3 (2 OCR)" in result.stdout, result.stdout

@@ -574,7 +574,8 @@ def documents_list(
         return
     table = Table("collection", "source", "title", "pages", "chunks")
     for d in docs:
-        table.add_row(d.collection, d.source, d.title or "", str(d.page_count or "–"), str(d.chunk_count))
+        pages = str(d.page_count or "–") + (f" ({len(d.ocr_pages)} OCR)" if d.ocr_pages else "")
+        table.add_row(d.collection, d.source, d.title or "", pages, str(d.chunk_count))
     out.print(table)
 
 

@@ -2,7 +2,8 @@
 #
 # Citewell image. CPU-only PyTorch keeps it reasonably small (~1.5 GB with models
 # support). Build without local models (hash embedder only, for demos/CI):
-#   docker build --build-arg WITH_MODELS=false -t citewell:slim .
+#   docker build --build-arg WITH_MODELS=false --build-arg WITH_OCR=false -t citewell:slim .
+# OCR for scanned PDFs (CITEWELL_OCR=auto) needs tesseract with Turkish data; WITH_OCR=false leaves it out.
 
 ARG PYTHON_VERSION=3.12
 
@@ -12,6 +13,7 @@ FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
 FROM python:${PYTHON_VERSION}-slim AS builder
 COPY --from=uv /uv /usr/local/bin/uv
 ARG WITH_MODELS=true
+ARG WITH_OCR=true
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     VIRTUAL_ENV=/opt/venv \
@@ -25,7 +27,9 @@ COPY pyproject.toml uv.lock README.md LICENSE ./
 # version; CUDA wheels from PyPI are filtered out.
 RUN --mount=type=cache,target=/root/.cache/uv \
     set -eu; \
-    extra=""; [ "$WITH_MODELS" = "true" ] && extra="--extra models"; \
+    extra=""; \
+    if [ "$WITH_MODELS" = "true" ]; then extra="--extra models"; fi; \
+    if [ "$WITH_OCR" = "true" ]; then extra="$extra --extra ocr"; fi; \
     uv export --frozen --no-dev --no-emit-project --no-hashes $extra -o /tmp/requirements.txt; \
     if [ "$WITH_MODELS" = "true" ]; then \
       torch_version="$(grep -E '^torch==' /tmp/requirements.txt | cut -d'=' -f3 | cut -d' ' -f1)"; \
@@ -44,9 +48,13 @@ LABEL org.opencontainers.image.title="citewell" \
       org.opencontainers.image.source="https://github.com/omerozkilic/citewell" \
       org.opencontainers.image.licenses="MIT"
 
-# Pick up Debian security fixes published after the base image was built.
+ARG WITH_OCR=true
+# Pick up Debian security fixes published after the base image was built; tesseract is for OCR.
 RUN apt-get update \
  && apt-get upgrade -y --no-install-recommends \
+ && if [ "$WITH_OCR" = "true" ]; then \
+      apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-tur tesseract-ocr-eng; \
+    fi \
  && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --create-home --uid 1000 citewell \

@@ -24,7 +24,7 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
 - [x] Workflow actions pinned to commit SHAs ([#16](https://github.com/omerozkilic/citewell/issues/16))
 
 ## 0.3 — more document types
-- [ ] OCR for scanned PDFs (Tesseract `tur`) ([#17](https://github.com/omerozkilic/citewell/issues/17))
+- [x] OCR for scanned PDFs (Tesseract `tur`) ([#17](https://github.com/omerozkilic/citewell/issues/17))
 - [x] Better tables in PDFs ([#18](https://github.com/omerozkilic/citewell/issues/18))
 - [x] `citewell watch`: re-index a folder when files change ([#19](https://github.com/omerozkilic/citewell/issues/19))
 - [ ] Complete the legislation eval with KVKK and the Constitution ([#20](https://github.com/omerozkilic/citewell/issues/20))
