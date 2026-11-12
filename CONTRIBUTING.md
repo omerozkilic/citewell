@@ -77,6 +77,9 @@ CITEWELL_EMBEDDING_BACKEND=hash CITEWELL_RERANKER_BACKEND=lexical \
 CITEWELL_EMBEDDING_BACKEND=hash CITEWELL_RERANKER_BACKEND=lexical \
   uv run citewell eval examples/eval/tr-sample-ascii.jsonl -r keyword,hybrid \
   --write-baseline examples/eval/baselines/tr-sample-ascii.json
+CITEWELL_EMBEDDING_BACKEND=hash CITEWELL_RERANKER_BACKEND=lexical \
+  uv run citewell eval examples/eval/tr-extended.jsonl -r vector,keyword,hybrid,hybrid+rerank \
+  --write-baseline examples/eval/baselines/tr-extended.json
 ```
 
 ## Changing retrieval behaviour

@@ -80,6 +80,27 @@ characters (`Haftalik standart calisma suresi kac saat?`). Keyword search runs o
 diacritic-folded index; on this set (hash test embedder) it lifted keyword Recall@5 from 0.829 to
 0.943 and hybrid MRR@5 from 0.808 to 0.907. CI checks it on every push.
 
+## Harder handbook questions
+
+`examples/eval/tr-extended.jsonl` has 42 more questions on the same sample corpus, tagged by what makes them
+hard: `no-shared-words` (paraphrases that share no word with the answer), `typo`, `numbers`, `dates`, `yes-no`,
+`abbreviation`, `cross-lingual`, and answers that need more than one place (`multi-source`, `two-pages`,
+`two-sections`; every needed place is listed as relevant). Each question carries `answers`, strings that
+the relevant passages must contain; a test checks them against the corpus so a wrong label fails CI.
+
+With the hash test embedder (what CI runs) the set separates what the handbook set cannot:
+
+| Run | Recall@5 | MRR@5 | Page hit@5 |
+|---|---:|---:|---:|
+| vector | 0.917 | 0.806 | 0.812 |
+| keyword | 0.893 | 0.851 | 0.750 |
+| hybrid | 0.952 | 0.859 | 0.875 |
+| hybrid+rerank | 0.952 | 0.873 | 0.875 |
+
+(`tr-sample.jsonl` scores 0.97–1.00 Recall and 1.000 page hit on the same runs.) The misses are the
+paraphrases without shared words, which only semantic models can answer: run it with `bge-m3` to see the real
+numbers. CI compares against a stored baseline (no absolute threshold) to catch regressions.
+
 ## Turkish legislation set
 
 `examples/eval/mevzuat-questions.jsonl` contains 53 questions about the Labour Law (4857, 20), the

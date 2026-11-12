@@ -1,0 +1,25 @@
+{
+  "k": 5,
+  "runs": {
+    "hybrid": {
+      "mrr@k": 0.8591,
+      "page_hit@k": 0.875,
+      "recall@k": 0.9524
+    },
+    "hybrid+rerank": {
+      "mrr@k": 0.873,
+      "page_hit@k": 0.875,
+      "recall@k": 0.9524
+    },
+    "keyword": {
+      "mrr@k": 0.8512,
+      "page_hit@k": 0.75,
+      "recall@k": 0.8929
+    },
+    "vector": {
+      "mrr@k": 0.8056,
+      "page_hit@k": 0.8125,
+      "recall@k": 0.9167
+    }
+  }
+}

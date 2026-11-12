@@ -107,6 +107,13 @@ jobs:
             -r keyword,hybrid --markdown --fail-under 0.8 \
             --baseline examples/eval/baselines/tr-sample-ascii.json \
             | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: "Evaluate (harder questions: typos, numbers, paraphrases, multi-place answers)"
+        # No --fail-under: the hash embedder cannot answer paraphrases. The baseline still catches regressions.
+        run: |
+          uv run citewell eval examples/eval/tr-extended.jsonl \
+            -r vector,keyword,hybrid,hybrid+rerank --markdown \
+            --baseline examples/eval/baselines/tr-extended.json \
+            | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: eval-report
