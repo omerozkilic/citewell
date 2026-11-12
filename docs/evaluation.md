@@ -82,14 +82,17 @@ diacritic-folded index; on this set (hash test embedder) it lifted keyword Recal
 
 ## Turkish legislation set
 
-`examples/eval/mevzuat-questions.jsonl` contains 35 questions about the Labour Law (4857), the
-Personal Data Protection Law (KVKK, 6698) and the Constitution (2709). Each question names a law
+`examples/eval/mevzuat-questions.jsonl` contains 53 questions about the Labour Law (4857, 20), the
+Personal Data Protection Law (KVKK, 6698, 16) and the Constitution (2709, 17). Each question names a law
 and an article instead of a page, because page numbers change whenever mevzuat.gov.tr republishes
 an amended text. Turkish legislation is not protected by copyright (FSEK art. 31), which makes it a
 good basis for a public benchmark.
 
-1. Download the PDFs from mevzuat.gov.tr into one folder (e.g. `data/mevzuat/`); keep the law
-   number in the file name (`1.5.4857.pdf`, `is-kanunu-4857.pdf`, …).
+1. Download the PDFs into one folder (e.g. `data/mevzuat/`); keep the law number in the file name
+   (`1.5.4857.pdf`, `is-kanunu-4857.pdf`, …). mevzuat.gov.tr is the primary source; it is sometimes
+   unreachable from outside Turkey. The Constitution is also published as a PDF by the Grand National
+   Assembly (`https://cdn.tbmm.gov.tr/TbmmWeb/Anayasa/anayasa_2018.pdf`; save it as `anayasa-2709.pdf`). Name
+   the KVKK export `1.5.6698.pdf`.
 2. Ingest them and build the dataset for *your* PDF versions. The script finds each
    `Madde N –` heading with the same extraction Citewell uses and records every page the article
    spans (`"pages": [27, 28]` — a hit on any of them counts):
@@ -101,3 +104,9 @@ uv run citewell eval data/mevzuat-eval.jsonl -c mevzuat -r vector,keyword,hybrid
 ```
 
 Questions whose law PDF is missing are skipped, so you can start with the Labour Law alone.
+
+The KVKK and Constitution questions were checked against real PDFs: every question resolves to its article
+and the article text answers it. Mind the version of the KVKK text: articles 6, 9 and 18 were rewritten in
+2024 (Law 7499). The questions about them (`kv02`, `kv05`) stay valid, but the answer differs between a
+pre-2024 and a current PDF, so compare runs only within one PDF version. Question tags (`exact`,
+`paraphrase`, `numbers`, `reasoning`, `cross-reference`) let you see where retrieval struggles.
