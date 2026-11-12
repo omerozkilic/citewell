@@ -16,6 +16,8 @@ Offline · MCP-native · Turkish-ready
 
 </div>
 
+<!-- mcp-name: io.github.omerozkilic/citewell -->
+
 ---
 
 Citewell is a **headless RAG server** that gives Claude Desktop, Claude Code, Cursor and any other
