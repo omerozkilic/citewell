@@ -30,7 +30,7 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
 - [ ] Complete the legislation eval with KVKK and the Constitution ([#20](https://github.com/omerozkilic/citewell/issues/20))
 - [ ] List Citewell in the official MCP Registry ([#21](https://github.com/omerozkilic/citewell/issues/21))
 - [ ] More Turkish eval questions ([#22](https://github.com/omerozkilic/citewell/issues/22))
-- [ ] `citewell doctor`: diagnose the install ([#35](https://github.com/omerozkilic/citewell/issues/35))
+- [x] `citewell doctor`: diagnose the install ([#35](https://github.com/omerozkilic/citewell/issues/35))
 - [ ] More loaders: EPUB, PPTX, XLSX/CSV, EML ([#36](https://github.com/omerozkilic/citewell/issues/36))
 - [ ] CI eval regression gate ([#38](https://github.com/omerozkilic/citewell/issues/38))
 - [ ] Security: Query limits and DB statement timeout ([#48](https://github.com/omerozkilic/citewell/issues/48))

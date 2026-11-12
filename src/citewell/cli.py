@@ -563,58 +563,26 @@ def models_download(
 
 
 @app.command()
-def doctor() -> None:
-    """Check configuration, database, pgvector and models."""
-    from citewell import db as dbmod
-    from citewell.app import Citewell
+def doctor(
+    as_json: Annotated[bool, typer.Option("--json", help="Print the checks as JSON.")] = False,
+) -> None:
+    """Check configuration, database, pgvector, models and offline readiness (read-only)."""
+    from citewell.doctor import has_failures, run_checks
 
     s = get_settings()
-    ok = True
-
-    def line(status: bool | None, label: str, detail: str = "") -> None:
-        icon = {True: "[green]✓[/]", False: "[red]✗[/]", None: "[yellow]![/]"}[status]
-        console.print(f"{icon} {label}{': ' + detail if detail else ''}")
-
-    line(True, "citewell", __version__)
-    line(True, "python", sys.version.split()[0])
-    cw = Citewell(s)
-    try:
-        with cw.store.conn() as conn:
-            server = conn.execute("SHOW server_version").fetchone()
-            line(True, "postgresql", str(server[0]) if server else "?")
-            v = dbmod.pgvector_version(conn)
-            if v:
-                line(True, "pgvector", ".".join(map(str, v)) + ("" if v >= (0, 8) else " (≥0.8 recommended)"))
-            else:
-                line(False, "pgvector", "extension not installed — run `citewell init`")
-                ok = False
-        try:
-            cw.check_schema()
-            line(True, "schema", f"{cw.embedding_model_id} ({s.embedding_dim}-d)")
-        except dbmod.SchemaMismatchError as exc:
-            line(False, "schema", str(exc))
-            ok = False
-    except Exception as exc:
-        line(False, "database", f"{type(exc).__name__}: {exc}")
-        ok = False
-    finally:
-        cw.close()
-
-    if s.embedding_backend == "hash":
-        line(None, "embeddings", "hash backend (testing only, not semantic)")
+    checks = run_checks(s)
+    failed = has_failures(checks)
+    if as_json:
+        typer.echo(
+            json.dumps({"ok": not failed, "checks": [c.as_dict() for c in checks]}, ensure_ascii=False)
+        )
     else:
-        try:
-            import sentence_transformers  # noqa: F401
-
-            line(True, "embeddings", f"{s.embedding_model} via sentence-transformers")
-        except ImportError:
-            line(False, "embeddings", "sentence-transformers missing: pip install 'citewell[models]'")
-            ok = False
-    line(
-        True if s.reranker_backend != "none" else None, "reranker", f"{s.reranker_backend} {s.reranker_model}"
-    )
-    line(True if s.api_token else None, "api token", "set" if s.api_token else "not set (fine for localhost)")
-    if not ok:
+        icons = {"ok": "[green]✓[/]", "warn": "[yellow]![/]", "fail": "[red]✗[/]"}
+        for c in checks:
+            console.print(f"{icons[c.status]} {c.name}{': ' + c.detail if c.detail else ''}", highlight=False)
+            if c.hint and c.status != "ok":
+                console.print(f"    [dim]→ {c.hint}[/]", highlight=False)
+    if failed:
         raise typer.Exit(1)
 
 
