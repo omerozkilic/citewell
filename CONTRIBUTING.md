@@ -47,6 +47,22 @@ uv run pytest --cov --cov-fail-under=85
 
 Optional: `uvx pre-commit install` to run ruff on every commit.
 
+## Releases and the MCP Registry
+
+Releases are cut by merging the release-please PR: it bumps the version, tags it and publishes to PyPI and
+ghcr.io. `server.json` (the listing for the [MCP Registry](https://registry.modelcontextprotocol.io)) is bumped
+by the same PR, and `tests/test_server_json.py` checks it against the registry schema, the PyPI package and the
+README. The registry verifies the *published* PyPI README for the `mcp-name:` marker, so list a version only
+after it is on PyPI:
+
+```bash
+brew install mcp-publisher              # or the release binary, see the registry quickstart
+mcp-publisher login github              # the name io.github.omerozkilic/citewell needs this account
+mcp-publisher publish                   # run in the repository root, at the released tag
+```
+
+Quickstart and troubleshooting: <https://modelcontextprotocol.io/registry/quickstart>.
+
 ## Eval baselines
 
 CI compares `citewell eval` with the files in `examples/eval/baselines/` and fails when Recall@k, MRR@k

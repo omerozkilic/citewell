@@ -1,0 +1,47 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.omerozkilic/citewell",
+  "title": "Citewell",
+  "description": "Citation-grounded document memory for AI assistants. Offline, Turkish-ready.",
+  "websiteUrl": "https://omerozkilic.github.io/citewell",
+  "repository": {
+    "url": "https://github.com/omerozkilic/citewell",
+    "source": "github"
+  },
+  "version": "0.2.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "citewell",
+      "version": "0.2.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "CITEWELL_DATABASE_URL",
+          "description": "PostgreSQL (pgvector) connection URL, e.g. postgresql://user:password@localhost:5432/citewell",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "CITEWELL_EMBEDDING_BACKEND",
+          "description": "sentence-transformers (default, needs the citewell[models] extra) or hash (tests and demos only)",
+          "default": "sentence-transformers"
+        },
+        {
+          "name": "CITEWELL_DEFAULT_COLLECTION",
+          "description": "Collection searched when a tool call does not name one",
+          "default": "default"
+        }
+      ]
+    }
+  ]
+}
