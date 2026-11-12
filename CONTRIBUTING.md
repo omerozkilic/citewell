@@ -47,6 +47,22 @@ uv run pytest --cov --cov-fail-under=85
 
 Optional: `uvx pre-commit install` to run ruff on every commit.
 
+## Eval baselines
+
+CI compares `citewell eval` with the files in `examples/eval/baselines/` and fails when Recall@k, MRR@k
+or page hit drop by more than 0.02. After an intentional retrieval change, refresh them with the same
+settings CI uses (hash embeddings, lexical reranker, the `examples/corpus*` documents ingested) and
+commit the diff together with the change:
+
+```bash
+CITEWELL_EMBEDDING_BACKEND=hash CITEWELL_RERANKER_BACKEND=lexical \
+  uv run citewell eval examples/eval/tr-sample.jsonl -r vector,keyword,hybrid,hybrid+rerank \
+  --write-baseline examples/eval/baselines/tr-sample.json
+CITEWELL_EMBEDDING_BACKEND=hash CITEWELL_RERANKER_BACKEND=lexical \
+  uv run citewell eval examples/eval/tr-sample-ascii.jsonl -r keyword,hybrid \
+  --write-baseline examples/eval/baselines/tr-sample-ascii.json
+```
+
 ## Changing retrieval behaviour
 
 If you touch chunking, loaders, ranking or fusion, include before/after numbers from

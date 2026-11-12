@@ -254,3 +254,87 @@ def report_markdown(reports: Sequence[RunReport]) -> str:
             f"{r.latency_p50_ms:.0f} | {r.latency_p95_ms:.0f} |"
         )
     return "\n".join(lines)
+
+
+# ------------------------------------------------------------------- baselines
+
+BASELINE_METRICS = ("recall@k", "mrr@k", "page_hit@k")
+"""Quality metrics compared against a baseline. Latency is machine dependent and never gated."""
+
+
+@dataclass(frozen=True, slots=True)
+class MetricDelta:
+    run: str
+    metric: str
+    baseline: float
+    current: float
+    regressed: bool
+
+    @property
+    def delta(self) -> float:
+        return self.current - self.baseline
+
+
+def baseline_payload(reports: Sequence[RunReport]) -> dict[str, object]:
+    """Compact, diff-friendly snapshot of the quality metrics of each run."""
+    runs: dict[str, dict[str, float]] = {}
+    for r in reports:
+        summary = r.summary()
+        runs[r.label] = {
+            m: float(v) for m in BASELINE_METRICS if isinstance(v := summary.get(m), int | float)
+        }
+    return {"k": reports[0].k if reports else 0, "runs": runs}
+
+
+def load_baseline(path: Path) -> dict[str, object]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"cannot read baseline {path}: {exc}") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("runs"), dict):
+        raise ValueError(f"{path} is not a Citewell eval baseline (expected a 'runs' object)")
+    return data
+
+
+def compare_to_baseline(
+    reports: Sequence[RunReport], baseline: dict[str, object], tolerance: float = 0.02
+) -> list[MetricDelta]:
+    """Compare each run with the baseline; a metric regresses when it drops by more than ``tolerance``.
+
+    Runs missing from the baseline are ignored, so new run types can be added before the baseline
+    is refreshed. The cut-off ``k`` must match, otherwise the numbers are not comparable.
+    """
+    if reports and baseline.get("k") not in (None, reports[0].k):
+        raise ValueError(f"baseline was recorded with k={baseline.get('k')}, this run uses k={reports[0].k}")
+    runs = baseline.get("runs")
+    assert isinstance(runs, dict)
+    deltas: list[MetricDelta] = []
+    for r in reports:
+        base = runs.get(r.label)
+        if not isinstance(base, dict):
+            continue
+        current = r.summary()
+        for metric in BASELINE_METRICS:
+            old, new = base.get(metric), current.get(metric)
+            if not isinstance(old, int | float) or not isinstance(new, int | float):
+                continue
+            deltas.append(
+                MetricDelta(r.label, metric, float(old), float(new), regressed=new < old - tolerance - 1e-9)
+            )
+    return deltas
+
+
+def comparison_markdown(deltas: Sequence[MetricDelta], tolerance: float) -> str:
+    """Markdown table of the comparison, for the CI job summary."""
+    if not deltas:
+        return "_No runs matched the baseline._"
+    lines = [
+        f"| Run | Metric | Baseline | Now | Δ (tolerance {tolerance:.3f}) | |",
+        "|---|---|---:|---:|---:|---|",
+    ]
+    for d in deltas:
+        flag = "❌ regression" if d.regressed else ("▲" if d.delta > 1e-9 else "")
+        lines.append(
+            f"| {d.run} | {d.metric} | {d.baseline:.3f} | {d.current:.3f} | {d.delta:+.3f} | {flag} |"
+        )
+    return "\n".join(lines)

@@ -11,7 +11,7 @@ stdout, so it can be piped (`citewell search … --json | jq`).
 | `citewell verify QUOTE [--chunk ID] [--source FILE] [-c COL]… [--json]` | Check that a quotation occurs in the documents; prints the exact source wording and page. Exit code 4 if not verified. |
 | `citewell serve [--init] [--host H] [--port P] [--no-mcp]` | REST API with the MCP Streamable HTTP endpoint at `/mcp`. |
 | `citewell mcp [--transport stdio\|http]` | MCP server only (stdio for desktop clients). |
-| `citewell eval DATASET [-k N] [-r RUNS] [-c COL] [-o FILE] [--markdown] [--fail-under X]` | Retrieval metrics; see [Evaluation](evaluation.md). Exit code 3 if hybrid Recall@k < X. |
+| `citewell eval DATASET [-k N] [-r RUNS] [-c COL] [-o FILE] [--markdown] [--fail-under X] [--baseline FILE [--tolerance T]] [--write-baseline FILE]` | Retrieval metrics; see [Evaluation](evaluation.md). Exit code 3 if hybrid Recall@k < X or a metric regresses against the baseline. |
 | `citewell collections list\|create\|delete` | Manage collections (`create NAME -l english -d "…"`). |
 | `citewell documents list\|delete` | List or remove documents by source path. |
 | `citewell models download [--no-reranker]` | Fetch the configured models into the Hugging Face cache. |

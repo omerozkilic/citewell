@@ -361,9 +361,33 @@ def eval_cmd(
     fail_under: Annotated[
         float | None, typer.Option(help="Exit non-zero if hybrid Recall@k is below this (for CI).")
     ] = None,
+    baseline: Annotated[
+        Path | None,
+        typer.Option(
+            "--baseline",
+            help="Compare with a saved baseline; exit 3 if a metric drops by more than --tolerance.",
+            exists=True,
+            dir_okay=False,
+        ),
+    ] = None,
+    tolerance: Annotated[
+        float, typer.Option(help="Allowed drop per metric when comparing with --baseline.", min=0.0, max=1.0)
+    ] = 0.02,
+    write_baseline: Annotated[
+        Path | None, typer.Option("--write-baseline", help="Save these results as a baseline file.")
+    ] = None,
 ) -> None:
     """Evaluate retrieval quality: Recall@k, MRR, page hit rate and latency."""
-    from citewell.evaluation import RunConfig, load_dataset, report_markdown, run_eval
+    from citewell.evaluation import (
+        RunConfig,
+        baseline_payload,
+        compare_to_baseline,
+        comparison_markdown,
+        load_baseline,
+        load_dataset,
+        report_markdown,
+        run_eval,
+    )
 
     try:
         configs = [RunConfig.parse(s) for s in runs.split(",") if s.strip()]
@@ -407,6 +431,22 @@ def eval_cmd(
         }
         output.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         console.print(f"[green]✓[/] report written to {output}")
+    if write_baseline:
+        write_baseline.parent.mkdir(parents=True, exist_ok=True)
+        write_baseline.write_text(
+            json.dumps(baseline_payload(reports), indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        console.print(f"[green]✓[/] baseline written to {write_baseline}")
+    if baseline:
+        try:
+            deltas = compare_to_baseline(reports, load_baseline(baseline), tolerance)
+        except ValueError as exc:
+            raise _fail(str(exc)) from exc
+        out.print(comparison_markdown(deltas, tolerance), highlight=False)
+        regressed = [d for d in deltas if d.regressed]
+        if regressed:
+            worst = ", ".join(f"{d.run} {d.metric} {d.baseline:.3f}→{d.current:.3f}" for d in regressed)
+            raise _fail(f"retrieval regressed against {baseline.name}: {worst}", code=3)
     if fail_under is not None:
         target = next((r for r in reports if r.label == "hybrid"), reports[-1])
         if target.recall_at_k < fail_under:
