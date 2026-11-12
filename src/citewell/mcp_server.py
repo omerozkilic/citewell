@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 
 from citewell import __version__
 from citewell.app import Citewell
+from citewell.config import MAX_QUERY_CHARS
 from citewell.models import (
     ChunkRecord,
     Collection,
@@ -126,7 +127,12 @@ def build_server(app: Citewell) -> MCPServer:
 
     @mcp.tool(title="Search documents", annotations=READ_ONLY)
     def search_documents(
-        query: Annotated[str, Field(description="What to look for, in natural language.", min_length=1)],
+        query: Annotated[
+            str,
+            Field(
+                description="What to look for, in natural language.", min_length=1, max_length=MAX_QUERY_CHARS
+            ),
+        ],
         top_k: Annotated[int, Field(ge=1, le=settings.max_top_k, description="Number of passages.")] = (
             settings.default_top_k
         ),

@@ -18,6 +18,10 @@ EmbeddingBackend = Literal["sentence-transformers", "hash"]
 RerankerBackend = Literal["sentence-transformers", "lexical", "none"]
 
 
+MAX_QUERY_CHARS = 2000
+"""Longest search query accepted by REST and MCP."""
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="CITEWELL_",
@@ -62,6 +66,11 @@ class Settings(BaseSettings):
     default_mode: SearchMode = "hybrid"
     default_top_k: int = 5
     max_top_k: int = 50
+    statement_timeout_ms: int = Field(
+        default=15000,
+        ge=0,
+        description="Abort a search query in PostgreSQL after this many milliseconds (0 = no limit).",
+    )
     candidate_pool: int = Field(default=40, description="Per-retriever candidates fed into RRF.")
     rrf_k: int = 60
     quote_max_chars: int = 320

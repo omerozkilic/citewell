@@ -610,3 +610,31 @@ def test_cli_ingest_prune(citewell: Citewell, monkeypatch: pytest.MonkeyPatch, t
     finally:
         config.get_settings.cache_clear()
         citewell.store.delete_collection("prune-test")
+
+
+def test_search_statement_timeout(citewell: Citewell) -> None:
+    from citewell.store import QueryTimeoutError
+
+    store = citewell.store
+    original = store.statement_timeout_ms
+    store.statement_timeout_ms = 50
+    try:
+        with pytest.raises(QueryTimeoutError), store.read_tx() as conn:
+            conn.execute("SELECT pg_sleep(2)")
+        # The pooled connection is usable afterwards.
+        with store.read_tx() as conn:
+            assert conn.execute("SELECT 1").fetchone() == (1,)
+    finally:
+        store.statement_timeout_ms = original
+
+
+def test_api_rejects_oversized_query(citewell: Citewell) -> None:
+    from fastapi.testclient import TestClient
+
+    from citewell.api import create_app
+    from citewell.config import MAX_QUERY_CHARS
+
+    with TestClient(create_app(citewell, mount_mcp=False)) as c:
+        too_long = "a" * (MAX_QUERY_CHARS + 1)
+        assert c.get("/v1/search", params={"q": too_long}).status_code == 422
+        assert c.post("/v1/search", json={"query": too_long}).status_code == 422
