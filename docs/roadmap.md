@@ -14,7 +14,7 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
 - Multiple collections with per-collection language; MCP resources and the citation prompt
 - Eval harness (Recall@k, MRR, page hit, latency) with Turkish handbook and legislation sets
 
-## 0.2 — citation quality & Turkish (next release)
+## 0.2 — citation quality & Turkish ✅
 - [x] Install from PyPI (`uv tool install "citewell[models]"`), no clone needed ([#10](https://github.com/omerozkilic/citewell/issues/10))
 - [x] `verify_quote`: check a quotation against the source, get the exact wording and page ([#11](https://github.com/omerozkilic/citewell/issues/11))
 - [x] Printed PDF page labels in citations (`s. 12 (PDF s. 17)`) ([#12](https://github.com/omerozkilic/citewell/issues/12))
