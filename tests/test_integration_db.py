@@ -638,3 +638,60 @@ def test_api_rejects_oversized_query(citewell: Citewell) -> None:
         too_long = "a" * (MAX_QUERY_CHARS + 1)
         assert c.get("/v1/search", params={"q": too_long}).status_code == 422
         assert c.post("/v1/search", json={"query": too_long}).status_code == 422
+
+
+def test_doctor_on_a_healthy_database(citewell: Citewell) -> None:
+    from citewell.doctor import check_database, has_failures
+
+    checks = {c.name: c for c in check_database(make_settings())}
+    assert not has_failures(list(checks.values()))
+    assert checks["pgvector"].status in ("ok", "warn")
+    assert checks["embedding dimension"].status == "ok"
+    assert checks["migrations"].status == "ok"
+
+
+def test_doctor_detects_dimension_mismatch_without_changing_anything(citewell: Citewell) -> None:
+    from citewell.doctor import check_database
+
+    checks = {c.name: c for c in check_database(make_settings(embedding_dim=128))}
+    assert checks["embedding dimension"].status == "fail"
+    assert "re-ingest" in checks["embedding dimension"].hint
+    assert {c.name: c for c in check_database(make_settings())}["embedding dimension"].status == "ok"
+
+
+def test_doctor_reports_pending_migrations_read_only(citewell: Citewell) -> None:
+    import psycopg
+
+    from citewell.doctor import check_database
+
+    with psycopg.connect(make_settings().database_url, autocommit=True) as conn:
+        row = conn.execute(
+            "SELECT version, name FROM citewell_migrations ORDER BY version DESC LIMIT 1"
+        ).fetchone()
+        assert row is not None
+        conn.execute("DELETE FROM citewell_migrations WHERE version = %s", (row[0],))
+        try:
+            checks = {c.name: c for c in check_database(make_settings())}
+            assert checks["migrations"].status == "warn"
+            assert row[1] in checks["migrations"].detail
+            # doctor is read-only: it must not have applied the migration itself
+            count = conn.execute(
+                "SELECT count(*) FROM citewell_migrations WHERE version = %s", (row[0],)
+            ).fetchone()
+            assert count == (0,)
+        finally:
+            conn.execute("INSERT INTO citewell_migrations (version, name) VALUES (%s, %s)", (row[0], row[1]))
+
+
+def test_doctor_on_an_uninitialised_database(citewell: Citewell) -> None:
+    import psycopg
+
+    from citewell.doctor import check_database
+
+    with psycopg.connect(make_settings().database_url, autocommit=True) as conn:
+        conn.execute("ALTER TABLE citewell_meta RENAME TO citewell_meta_bak")
+        try:
+            checks = {c.name: c for c in check_database(make_settings())}
+            assert checks["schema"].status == "fail" and "citewell init" in checks["schema"].hint
+        finally:
+            conn.execute("ALTER TABLE citewell_meta_bak RENAME TO citewell_meta")

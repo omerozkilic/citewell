@@ -15,7 +15,7 @@ stdout, so it can be piped (`citewell search … --json | jq`).
 | `citewell collections list\|create\|delete` | Manage collections (`create NAME -l english -d "…"`). |
 | `citewell documents list\|delete` | List or remove documents by source path. |
 | `citewell models download [--no-reranker]` | Fetch the configured models into the Hugging Face cache. |
-| `citewell doctor` | Check versions, database, pgvector, schema and models. |
+| `citewell doctor` | Read-only install check: versions, database, pgvector, migrations, embedding dimension, model cache and offline readiness, with a fix hint per problem. `--json` for scripts; exit code 1 on failure. |
 
 ## Collections
 
