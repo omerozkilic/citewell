@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import sys
 import zipfile
 from pathlib import Path
 
@@ -58,3 +59,20 @@ def test_trust_remote_code_is_never_enabled() -> None:
     root = Path(__file__).resolve().parents[1] / "src" / "citewell"
     offenders = [p.name for p in root.glob("*.py") if "trust_remote_code" in p.read_text()]
     assert offenders == []
+
+
+def test_cached_revision_falls_back_to_a_single_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HF_HUB_CACHE", str(tmp_path))
+    snaps = tmp_path / "models--acme--m" / "snapshots"
+    (snaps / "aaa111").mkdir(parents=True)
+    assert hub.cached_revision("acme/m") == "aaa111"
+    (snaps / "bbb222").mkdir()
+    assert hub.cached_revision("acme/m") is None  # ambiguous: do not guess
+
+
+def test_docx_without_python_docx_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(sys.modules, "docx", None)  # makes ``import docx`` fail
+    with pytest.raises(UnsupportedFormatError, match="citewell\\[docx\\]"):
+        load_bytes(_zip_bytes(10), "ok.docx")

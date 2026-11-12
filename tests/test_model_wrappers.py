@@ -11,8 +11,15 @@ from citewell.rerank import CrossEncoderReranker, build_reranker
 
 
 class _FakeST:
-    def __init__(self, name: str, device: str | None = None, local_files_only: bool = False) -> None:
+    def __init__(
+        self,
+        name: str,
+        device: str | None = None,
+        local_files_only: bool = False,
+        revision: str | None = None,
+    ) -> None:
         self.name = name
+        self.revision = revision
         self.max_seq_length = 0
         self.seen: list[str] = []
 
@@ -26,9 +33,15 @@ class _FakeST:
 
 class _FakeCE:
     def __init__(
-        self, name: str, device: str | None = None, max_length: int = 512, local_files_only: bool = False
+        self,
+        name: str,
+        device: str | None = None,
+        max_length: int = 512,
+        local_files_only: bool = False,
+        revision: str | None = None,
     ) -> None:
         self.name = name
+        self.revision = revision
 
     def predict(self, pairs: list[tuple[str, str]], **_: object) -> list[float]:
         return [float(len(p)) - 3 for _, p in pairs]
@@ -86,3 +99,12 @@ def test_load_cached_first_prefers_cache_then_downloads(monkeypatch: pytest.Monk
     calls.clear()
     assert load_cached_first(factory, "missing", device="cpu") == "missing"
     assert calls == [{"local_files_only": True, "device": "cpu"}, {"device": "cpu"}]
+
+
+def test_revision_is_passed_to_the_models(fake_st: None) -> None:
+    e = build_embedder("sentence-transformers", "BAAI/bge-m3", 4, revision="abc123")
+    assert e._model.revision == "abc123"  # type: ignore[attr-defined]
+    r = build_reranker("sentence-transformers", "BAAI/bge-reranker-v2-m3", revision="def456")
+    assert r._model.revision == "def456"  # type: ignore[attr-defined]
+    unpinned = build_embedder("sentence-transformers", "BAAI/bge-m3", 4)
+    assert unpinned._model.revision is None  # type: ignore[attr-defined]
