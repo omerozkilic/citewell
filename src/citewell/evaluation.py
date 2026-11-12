@@ -56,6 +56,10 @@ class EvalQuery(BaseModel):
     relevant: list[RelevantItem] = Field(min_length=1)
     collection: str | None = None
     tags: list[str] = Field(default_factory=list)
+    answers: list[str] = Field(
+        default_factory=list,
+        description="Strings the relevant passages must contain (used by tests to keep labels honest).",
+    )
 
 
 @dataclass(frozen=True, slots=True)
