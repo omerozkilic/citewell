@@ -89,22 +89,82 @@ def _decode(data: bytes) -> str:
 # --------------------------------------------------------------------------- PDF
 
 
-def load_pdf(data: bytes, limits: LoadLimits = DEFAULT_LIMITS) -> tuple[list[Page], dict[str, str]]:
+def table_to_markdown(rows: list[list[str | None]]) -> str:
+    """Render extracted table rows as Markdown; ``""`` for anything that is not a real table."""
+    cleaned = [[" ".join(clean_text(c or "").split()).replace("|", "\\|") for c in row] for row in rows]
+    cleaned = [r for r in cleaned if any(r)]
+    width = max((len(r) for r in cleaned), default=0)
+    if len(cleaned) < 2 or width < 2:  # one row or one column is layout, not a table
+        return ""
+    lines = ["| " + " | ".join(r + [""] * (width - len(r))) + " |" for r in cleaned]
+    lines.insert(1, "|" + " --- |" * width)
+    return "\n".join(lines)
+
+
+def _prose(page: Any, top: float, bottom: float) -> str:
+    left, page_top, right, page_bottom = page.bbox
+    top, bottom = max(top, page_top), min(bottom, page_bottom)
+    if bottom - top < 1:
+        return ""
+    return reflow(clean_text(page.crop((left, top, right, bottom)).extract_text() or ""))
+
+
+def _page_text_with_tables(page: Any) -> str | None:
+    """Page text with ruled tables as Markdown rows in reading order; ``None`` if it has no table."""
+    found = []
+    for table in page.find_tables():
+        markdown = table_to_markdown(table.extract())
+        if markdown:
+            found.append((table.bbox, markdown))
+    if not found:
+        return None
+    parts: list[str] = []
+    cursor = page.bbox[1]
+    for bbox, markdown in sorted(found, key=lambda item: item[0][1]):
+        parts += [_prose(page, cursor, bbox[1]), markdown]
+        cursor = max(cursor, bbox[3])
+    parts.append(_prose(page, cursor, page.bbox[3]))
+    return "\n\n".join(p for p in parts if p)
+
+
+def load_pdf(
+    data: bytes, limits: LoadLimits = DEFAULT_LIMITS, tables: bool = False
+) -> tuple[list[Page], dict[str, str]]:
     from pypdf import PdfReader
 
     reader = PdfReader(io.BytesIO(data))
     if limits.max_pages and len(reader.pages) > limits.max_pages:
         raise LimitExceededError(f"PDF has {len(reader.pages)} pages, over the {limits.max_pages} page limit")
+    plumber = None
+    if tables:
+        try:
+            import pdfplumber
+        except ImportError as exc:
+            raise UnsupportedFormatError(
+                "PDF table extraction requires: pip install 'citewell[tables]'"
+            ) from exc
+        plumber = pdfplumber.open(io.BytesIO(data))
     labels = _page_labels(reader)
     pages: list[Page] = []
-    for i, page in enumerate(reader.pages, start=1):
-        try:
-            raw = page.extract_text() or ""
-        except Exception as exc:  # pragma: no cover - malformed PDFs
-            log.warning("page %s could not be extracted: %s", i, exc)
-            raw = ""
-        label = labels[i - 1] if labels and i - 1 < len(labels) else None
-        pages.append(Page(number=i, text=reflow(clean_text(raw)), label=label))
+    try:
+        for i, page in enumerate(reader.pages, start=1):
+            text: str | None = None
+            if plumber is not None:
+                try:
+                    text = _page_text_with_tables(plumber.pages[i - 1])
+                except Exception as exc:  # fall back to the plain text of this page
+                    log.warning("tables on page %s could not be extracted: %s", i, exc)
+            if text is None:
+                try:
+                    text = reflow(clean_text(page.extract_text() or ""))
+                except Exception as exc:  # pragma: no cover - malformed PDFs
+                    log.warning("page %s could not be extracted: %s", i, exc)
+                    text = ""
+            label = labels[i - 1] if labels and i - 1 < len(labels) else None
+            pages.append(Page(number=i, text=text, label=label))
+    finally:
+        if plumber is not None:
+            plumber.close()
     meta: dict[str, str] = {}
     if reader.metadata:
         if reader.metadata.title:
@@ -283,10 +343,17 @@ def detect_mime(name: str) -> str:
 
 
 def load_bytes(
-    data: bytes, source: str, mime: str | None = None, limits: LoadLimits = DEFAULT_LIMITS
+    data: bytes,
+    source: str,
+    mime: str | None = None,
+    limits: LoadLimits = DEFAULT_LIMITS,
+    pdf_tables: bool = False,
 ) -> LoadedDocument:
     mime = mime or detect_mime(source)
-    pages, meta = _LOADERS[mime](data, limits)
+    if mime == "application/pdf":
+        pages, meta = load_pdf(data, limits, tables=pdf_tables)
+    else:
+        pages, meta = _LOADERS[mime](data, limits)
     title = meta.pop("title", None) or Path(source).stem.replace("_", " ").replace("-", " ")
     with_text = [p for p in pages if p.text.strip()]
     metadata: dict[str, Any] = dict(meta)

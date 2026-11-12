@@ -816,3 +816,22 @@ def test_cli_watch_stops_cleanly(citewell: Citewell, tmp_path: Any, monkeypatch:
     result = _watch_cli(monkeypatch, tmp_path, interrupted)
     assert result.exit_code == 0, result.output
     assert "watching" in result.output and "stopped" in result.output
+
+
+def test_table_values_are_retrievable_with_pdf_tables(citewell: Citewell, tmp_path: Any) -> None:
+    pytest.importorskip("pdfplumber")
+    from .test_pdf_tables import FEES, PROSE, _pdf
+
+    pdf = tmp_path / "tarife.pdf"
+    pdf.write_bytes(_pdf([PROSE], ["Tarife", FEES, "Yilda bir guncellenir."]))
+    cw = Citewell(make_settings(pdf_tables=True))
+    try:
+        results = cw.ingest.ingest_paths([pdf], collection="tables-test")
+        assert [r.status for r in results] == ["ingested"]
+        hits = cw.search.search(
+            SearchRequest(query="basvuru ucreti 1500", collections=["tables-test"], mode="keyword")
+        ).hits
+        assert hits and hits[0].page == 2
+        assert "| Basvuru ucreti | 1500 | 5 gun |" in hits[0].text
+    finally:
+        cw.close()
