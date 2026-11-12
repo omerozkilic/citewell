@@ -41,6 +41,18 @@ The `eval` job ingests the sample corpus with the lexical `hash` embedder and fa
 Recall@5 drops below 0.8 (`--fail-under`). This guards the *pipeline* (loaders, chunking, SQL,
 fusion) on every push; it says nothing about semantic quality.
 
+It also compares every run with a stored baseline (`examples/eval/baselines/*.json`) and fails when
+Recall@k, MRR@k or page hit drop by more than `--tolerance` (default 0.02), so a retrieval change that
+quietly makes things worse cannot be merged. The comparison table ends up in the job summary.
+
+```bash
+citewell eval questions.jsonl -r hybrid --write-baseline baseline.json   # record
+citewell eval questions.jsonl -r hybrid --baseline baseline.json         # compare, exit 3 on regression
+```
+
+See [CONTRIBUTING](https://github.com/omerozkilic/citewell/blob/main/CONTRIBUTING.md) for refreshing the
+baselines after an intentional change.
+
 ## Benchmarks
 
 The bundled 35-question handbook set was written alongside the corpus — treat it as a smoke test.

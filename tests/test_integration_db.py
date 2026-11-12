@@ -695,3 +695,40 @@ def test_doctor_on_an_uninitialised_database(citewell: Citewell) -> None:
             assert checks["schema"].status == "fail" and "citewell init" in checks["schema"].hint
         finally:
             conn.execute("ALTER TABLE citewell_meta_bak RENAME TO citewell_meta")
+
+
+def test_cli_eval_baseline_roundtrip(
+    citewell: Citewell, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json as _json
+
+    from typer.testing import CliRunner
+
+    from citewell import config
+    from citewell.cli import app
+
+    monkeypatch.setenv("CITEWELL_DATABASE_URL", make_settings().database_url)
+    monkeypatch.setenv("CITEWELL_EMBEDDING_BACKEND", "hash")
+    monkeypatch.setenv("CITEWELL_EMBEDDING_DIM", "256")
+    monkeypatch.setenv("CITEWELL_RERANKER_BACKEND", "lexical")
+    config.get_settings.cache_clear()
+    runner = CliRunner()
+    path = tmp_path / "baseline.json"
+    try:
+        args = ["eval", str(EVAL_TR), "-r", "hybrid"]
+        assert runner.invoke(app, [*args, "--write-baseline", str(path)]).exit_code == 0
+        assert runner.invoke(app, [*args, "--baseline", str(path)]).exit_code == 0
+
+        data = _json.loads(path.read_text())
+        data["runs"]["hybrid"]["recall@k"] = 1.0
+        data["runs"]["hybrid"]["mrr@k"] = 1.0
+        path.write_text(_json.dumps(data))
+        result = runner.invoke(app, [*args, "--baseline", str(path), "--tolerance", "0"])
+        assert result.exit_code == 3, result.output
+        assert "regressed" in result.output
+
+        data["k"] = 99
+        path.write_text(_json.dumps(data))
+        assert runner.invoke(app, [*args, "--baseline", str(path)]).exit_code == 1
+    finally:
+        config.get_settings.cache_clear()
