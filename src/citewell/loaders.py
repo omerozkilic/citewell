@@ -11,10 +11,11 @@ import hashlib
 import io
 import logging
 import re
+import zipfile
 from collections.abc import Callable, Iterable, Iterator
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, NamedTuple
 
 from citewell.models import LoadedDocument, Page
 from citewell.text import clean_text, reflow
@@ -37,6 +38,37 @@ class UnsupportedFormatError(ValueError):
     pass
 
 
+class LimitExceededError(UnsupportedFormatError):
+    """A document is larger or more compressed than the configured safety limits."""
+
+
+class LoadLimits(NamedTuple):
+    """Safety limits against decompression bombs and huge inputs (0 disables a limit)."""
+
+    max_pages: int = 5000
+    max_unpacked_bytes: int = 200 * 1024 * 1024
+    max_zip_ratio: int = 200
+
+
+DEFAULT_LIMITS = LoadLimits()
+
+
+def _check_zip(data: bytes, limits: LoadLimits) -> None:
+    """Reject DOCX (zip) files that would unpack to an unreasonable size."""
+    try:
+        infos = zipfile.ZipFile(io.BytesIO(data)).infolist()
+    except zipfile.BadZipFile as exc:
+        raise UnsupportedFormatError("not a valid DOCX file") from exc
+    unpacked = sum(i.file_size for i in infos)
+    if limits.max_unpacked_bytes and unpacked > limits.max_unpacked_bytes:
+        mb, cap = unpacked // (1024 * 1024), limits.max_unpacked_bytes // (1024 * 1024)
+        raise LimitExceededError(f"DOCX unpacks to {mb} MB, over the {cap} MB limit")
+    if limits.max_zip_ratio and unpacked > 10 * 1024 * 1024 and unpacked > len(data) * limits.max_zip_ratio:
+        raise LimitExceededError(
+            f"DOCX compression ratio exceeds {limits.max_zip_ratio}:1 (possible zip bomb)"
+        )
+
+
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -57,10 +89,12 @@ def _decode(data: bytes) -> str:
 # --------------------------------------------------------------------------- PDF
 
 
-def load_pdf(data: bytes) -> tuple[list[Page], dict[str, str]]:
+def load_pdf(data: bytes, limits: LoadLimits = DEFAULT_LIMITS) -> tuple[list[Page], dict[str, str]]:
     from pypdf import PdfReader
 
     reader = PdfReader(io.BytesIO(data))
+    if limits.max_pages and len(reader.pages) > limits.max_pages:
+        raise LimitExceededError(f"PDF has {len(reader.pages)} pages, over the {limits.max_pages} page limit")
     labels = _page_labels(reader)
     pages: list[Page] = []
     for i, page in enumerate(reader.pages, start=1):
@@ -203,7 +237,8 @@ def load_html(text: str) -> tuple[list[Page], dict[str, str]]:
 # -------------------------------------------------------------------------- DOCX
 
 
-def load_docx(data: bytes) -> tuple[list[Page], dict[str, str]]:
+def load_docx(data: bytes, limits: LoadLimits = DEFAULT_LIMITS) -> tuple[list[Page], dict[str, str]]:
+    _check_zip(data, limits)
     try:
         import docx
     except ImportError as exc:  # pragma: no cover - optional dependency
@@ -228,13 +263,13 @@ def load_docx(data: bytes) -> tuple[list[Page], dict[str, str]]:
 
 # ------------------------------------------------------------------------ public
 
-_Loader = Callable[[bytes], tuple[list[Page], dict[str, str]]]
+_Loader = Callable[[bytes, LoadLimits], tuple[list[Page], dict[str, str]]]
 
 _LOADERS: dict[str, _Loader] = {
     "application/pdf": load_pdf,
-    "text/markdown": lambda b: load_markdown(_decode(b)),
-    "text/plain": lambda b: load_text(_decode(b)),
-    "text/html": lambda b: load_html(_decode(b)),
+    "text/markdown": lambda b, _l: load_markdown(_decode(b)),
+    "text/plain": lambda b, _l: load_text(_decode(b)),
+    "text/html": lambda b, _l: load_html(_decode(b)),
     SUPPORTED_SUFFIXES[".docx"]: load_docx,
 }
 
@@ -247,9 +282,11 @@ def detect_mime(name: str) -> str:
         raise UnsupportedFormatError(f"unsupported file type: {suffix or name}") from exc
 
 
-def load_bytes(data: bytes, source: str, mime: str | None = None) -> LoadedDocument:
+def load_bytes(
+    data: bytes, source: str, mime: str | None = None, limits: LoadLimits = DEFAULT_LIMITS
+) -> LoadedDocument:
     mime = mime or detect_mime(source)
-    pages, meta = _LOADERS[mime](data)
+    pages, meta = _LOADERS[mime](data, limits)
     title = meta.pop("title", None) or Path(source).stem.replace("_", " ").replace("-", " ")
     with_text = [p for p in pages if p.text.strip()]
     metadata: dict[str, Any] = dict(meta)

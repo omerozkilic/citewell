@@ -21,13 +21,18 @@ class Reranker(Protocol):
 
 
 class CrossEncoderReranker:
-    def __init__(self, model_name: str, device: str | None = None, max_length: int = 512):
+    def __init__(
+        self, model_name: str, device: str | None = None, max_length: int = 512, revision: str | None = None
+    ):
         try:
             from sentence_transformers import CrossEncoder
         except ImportError as exc:  # pragma: no cover - optional extra
             raise RuntimeError("Reranking needs the 'models' extra: pip install 'citewell[models]'") from exc
         log.info("loading reranker %s", model_name)
-        self._model = load_cached_first(CrossEncoder, model_name, device=device, max_length=max_length)
+        extra = {"revision": revision} if revision else {}
+        self._model = load_cached_first(
+            CrossEncoder, model_name, device=device, max_length=max_length, **extra
+        )
         self.name = model_name
         self._lock = threading.Lock()
 
@@ -56,11 +61,13 @@ class LexicalOverlapReranker:
         return out
 
 
-def build_reranker(backend: str, model_name: str, device: str | None = None) -> Reranker | None:
+def build_reranker(
+    backend: str, model_name: str, device: str | None = None, revision: str | None = None
+) -> Reranker | None:
     if backend == "none":
         return None
     if backend == "lexical":
         return LexicalOverlapReranker()
     if backend == "sentence-transformers":
-        return CrossEncoderReranker(model_name, device=device)
+        return CrossEncoderReranker(model_name, device=device, revision=revision)
     raise ValueError(f"unknown reranker backend: {backend}")

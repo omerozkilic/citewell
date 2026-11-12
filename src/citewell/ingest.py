@@ -9,7 +9,7 @@ from pathlib import Path
 from citewell.chunking import chunk_pages
 from citewell.config import Settings
 from citewell.embeddings import Embedder
-from citewell.loaders import UnsupportedFormatError, iter_files, load_bytes
+from citewell.loaders import LoadLimits, UnsupportedFormatError, iter_files, load_bytes
 from citewell.models import ChunkDraft, Collection, IngestResult, LoadedDocument
 from citewell.store import Store
 
@@ -76,6 +76,14 @@ class IngestService:
             message=warning,
         )
 
+    def _limits(self) -> LoadLimits:
+        s = self.settings
+        return LoadLimits(
+            max_pages=s.max_document_pages,
+            max_unpacked_bytes=s.max_unpacked_mb * 1024 * 1024,
+            max_zip_ratio=s.max_zip_ratio,
+        )
+
     def ingest_bytes(
         self,
         data: bytes,
@@ -86,7 +94,7 @@ class IngestService:
     ) -> IngestResult:
         col = self.collection(collection, language)
         try:
-            doc = load_bytes(data, source)
+            doc = load_bytes(data, source, limits=self._limits())
         except UnsupportedFormatError as exc:
             return IngestResult(source=source, status="error", message=str(exc))
         return self.ingest_document(doc, col, force=force)
@@ -104,7 +112,7 @@ class IngestService:
         results: list[IngestResult] = []
         for path, source in iter_files(paths, recursive=recursive):
             try:
-                doc = load_bytes(path.read_bytes(), source)
+                doc = load_bytes(path.read_bytes(), source, limits=self._limits())
                 res = self.ingest_document(doc, col, force=force)
             except Exception as exc:  # keep going; report per-file errors
                 log.exception("failed to ingest %s", path)

@@ -44,6 +44,20 @@ def is_model_cached(model_name: str) -> bool:
         return False
 
 
+def cached_revision(model_name: str) -> str | None:
+    """Commit hash of the locally cached snapshot of ``model_name`` (what ``refs/main`` points to)."""
+    repo = hub_cache_dir() / f"models--{model_name.replace('/', '--')}"
+    try:
+        return (repo / "refs" / "main").read_text().strip() or None
+    except OSError:
+        pass
+    try:
+        snaps = [p.name for p in (repo / "snapshots").iterdir() if p.is_dir()]
+    except OSError:
+        return None
+    return snaps[0] if len(snaps) == 1 else None
+
+
 def offline_requested() -> bool:
     return any(
         os.environ.get(v, "").strip().lower() in _TRUE for v in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE")
