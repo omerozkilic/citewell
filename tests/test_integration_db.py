@@ -732,3 +732,55 @@ def test_cli_eval_baseline_roundtrip(
         assert runner.invoke(app, [*args, "--baseline", str(path)]).exit_code == 1
     finally:
         config.get_settings.cache_clear()
+
+
+def test_watch_keeps_a_collection_in_sync(citewell: Citewell, tmp_path: Any) -> None:
+    import os
+
+    from citewell.watch import Watcher
+
+    # Own instance: an earlier CLI test closes the shared fixture's connection pool.
+    cw = Citewell(make_settings())
+    try:
+        note = tmp_path / "not.md"
+        note.write_text("# Not\n\nYıllık izin başvurusu yönetici onayı ile tamamlanır.", encoding="utf-8")
+        watcher = Watcher(cw.ingest, cw.store, [tmp_path], "watch-test", "turkish", prune=True)
+        first = watcher.poll(initial=True)
+        assert [e.kind for e in first] == ["ingested"], first
+        assert [d.source for d in cw.store.list_documents("watch-test")] == ["not.md"]
+        hits = cw.search.search(SearchRequest(query="yıllık izin başvurusu", collections=["watch-test"])).hits
+        assert hits and hits[0].source == "not.md"
+
+        note.write_text("# Not\n\nSeyahat masrafları fatura ile iade edilir.", encoding="utf-8")
+        os.utime(note, ns=(2 * 10**18, 2 * 10**18))
+        watcher.poll()
+        assert [e.kind for e in watcher.poll()] == ["ingested"]
+
+        note.unlink()
+        watcher.poll()
+        assert [e.kind for e in watcher.poll()] == ["removed"]
+        assert cw.store.list_documents("watch-test") == []
+    finally:
+        cw.close()
+
+
+def test_cli_watch_stops_cleanly(citewell: Citewell, tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    from typer.testing import CliRunner
+
+    from citewell import config
+    from citewell.cli import app
+
+    def interrupted(*_: Any, **__: Any) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("citewell.watch.run_watch", interrupted)
+    monkeypatch.setenv("CITEWELL_DATABASE_URL", make_settings().database_url)
+    monkeypatch.setenv("CITEWELL_EMBEDDING_BACKEND", "hash")
+    monkeypatch.setenv("CITEWELL_EMBEDDING_DIM", "256")
+    config.get_settings.cache_clear()
+    try:
+        result = CliRunner().invoke(app, ["watch", str(tmp_path), "-c", "watch-test"])
+    finally:
+        config.get_settings.cache_clear()
+    assert result.exit_code == 0, result.output
+    assert "watching" in result.output and "stopped" in result.output

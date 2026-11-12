@@ -7,6 +7,7 @@ stdout, so it can be piped (`citewell search … --json | jq`).
 |---|---|
 | `citewell init` | Create the `vector` extension and apply migrations (idempotent). Records the embedding model and dimension. |
 | `citewell ingest PATH… [-c COL] [-l LANG] [--force] [--no-recursive] [--prune [-y]]` | Load, chunk, embed and store files. Unchanged files are skipped. `--prune` also removes documents that are no longer in PATHS (asks first; never prunes when PATHS contain no files). Exit code 2 if any file failed. |
+| `citewell watch PATH… [-c COL] [-l LANG] [--interval S] [--prune]` | Keep a collection in sync with a folder: indexes at start, then re-indexes added or changed files (after they stop changing). `--prune` removes documents whose files were deleted (after two checks, so editors that replace files on save are safe). Polling, no extra dependency. Stop with Ctrl+C. |
 | `citewell search QUERY [-k N] [-m MODE] [-c COL]… [--rerank] [--json] [--full]` | Cited search results. `-c '*'` searches all collections. |
 | `citewell verify QUOTE [--chunk ID] [--source FILE] [-c COL]… [--json]` | Check that a quotation occurs in the documents; prints the exact source wording and page. Exit code 4 if not verified. |
 | `citewell serve [--init] [--host H] [--port P] [--no-mcp]` | REST API with the MCP Streamable HTTP endpoint at `/mcp`. |
