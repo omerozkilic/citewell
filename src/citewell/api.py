@@ -224,7 +224,9 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
     @api.post("/v1/documents", response_model=IngestResult, tags=["documents"])
     async def upload_document(
         cw: Svc,
-        file: Annotated[UploadFile, File(description="PDF, Markdown, TXT, HTML or DOCX")],
+        file: Annotated[
+            UploadFile, File(description="PDF, Markdown, TXT, HTML, DOCX, PPTX, XLSX, CSV, EPUB, EML")
+        ],
         collection: Annotated[str | None, Form()] = None,
         language: Annotated[Literal["turkish", "english", "simple"] | None, Form()] = None,
         force: Annotated[bool, Form()] = False,
