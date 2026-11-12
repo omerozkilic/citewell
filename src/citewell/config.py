@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # --- embeddings --------------------------------------------------------
     embedding_backend: EmbeddingBackend = "sentence-transformers"
     embedding_model: str = "BAAI/bge-m3"
+    embedding_revision: str | None = Field(
+        default=None, description="Pin the embedding model to this Hugging Face commit hash."
+    )
     embedding_dim: int = Field(
         default=1024,
         description="Vector dimension. Fixed when the database is initialised.",
@@ -52,6 +55,9 @@ class Settings(BaseSettings):
     # --- reranking ---------------------------------------------------------
     reranker_backend: RerankerBackend = "sentence-transformers"
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
+    reranker_revision: str | None = Field(
+        default=None, description="Pin the reranker to this Hugging Face commit hash."
+    )
     rerank_by_default: bool = False
     rerank_candidates: int = 30
 
@@ -87,6 +93,15 @@ class Settings(BaseSettings):
         description="When set, REST and HTTP MCP endpoints require 'Authorization: Bearer <token>'.",
     )
     max_upload_mb: int = 50
+    max_document_pages: int = Field(
+        default=5000, ge=0, description="Reject PDFs with more pages (0 = no limit)."
+    )
+    max_unpacked_mb: int = Field(
+        default=200, ge=0, description="Reject DOCX files that unpack to more than this (0 = no limit)."
+    )
+    max_zip_ratio: int = Field(
+        default=200, ge=0, description="Reject DOCX files compressed more than this ratio (0 = no limit)."
+    )
     allowed_hosts: list[str] = Field(
         default_factory=list,
         description="Extra Host headers accepted by the HTTP MCP endpoint (DNS-rebinding protection).",

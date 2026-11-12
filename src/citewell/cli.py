@@ -509,6 +509,17 @@ def documents_delete(
 # --------------------------------------------------------------------------- models
 
 
+def _print_pin(kind: str, model: str, pinned: str | None) -> None:
+    from citewell.hub import cached_revision
+
+    if pinned:
+        console.print(f"  pinned to revision {pinned}")
+        return
+    rev = cached_revision(model)
+    if rev:
+        console.print(f"  to pin this exact version: [bold]CITEWELL_{kind}_REVISION={rev}[/]")
+
+
 @models_app.command("download")
 def models_download(
     reranker: Annotated[
@@ -529,13 +540,23 @@ def models_download(
         console.print("embedding backend is 'hash' — nothing to download")
     else:
         with console.status(f"downloading {s.embedding_model}…"):
-            emb = build_embedder(s.embedding_backend, s.embedding_model, s.embedding_dim, device="cpu")
+            emb = build_embedder(
+                s.embedding_backend,
+                s.embedding_model,
+                s.embedding_dim,
+                device="cpu",
+                revision=s.embedding_revision,
+            )
         console.print(f"[green]✓[/] {emb.name} ({emb.dim}-d)")
+        _print_pin("EMBEDDING", s.embedding_model, s.embedding_revision)
     if reranker and s.reranker_backend == "sentence-transformers":
         with console.status(f"downloading {s.reranker_model}…"):
-            rr = build_reranker(s.reranker_backend, s.reranker_model, device="cpu")
+            rr = build_reranker(
+                s.reranker_backend, s.reranker_model, device="cpu", revision=s.reranker_revision
+            )
         if rr is not None:
             console.print(f"[green]✓[/] {rr.name}")
+            _print_pin("RERANKER", s.reranker_model, s.reranker_revision)
 
 
 # --------------------------------------------------------------------------- doctor

@@ -36,6 +36,11 @@ Citewell is designed to run **locally or inside a trusted network**. Things to k
   single expensive query cannot hold a database connection indefinitely.
 - **Container.** The Compose service runs as a non-root user with a read-only root filesystem, all Linux
   capabilities dropped and `no-new-privileges`; only `/models` (volume) and `/tmp` are writable.
+- **Parser limits.** PDFs above `CITEWELL_MAX_DOCUMENT_PAGES` and DOCX files that unpack beyond
+  `CITEWELL_MAX_UNPACKED_MB` or compress beyond `CITEWELL_MAX_ZIP_RATIO` are rejected before parsing.
+- **Models.** Citewell never enables `trust_remote_code` (a test enforces it). Set
+  `CITEWELL_EMBEDDING_REVISION` / `CITEWELL_RERANKER_REVISION` to a commit hash (printed by
+  `citewell models download`) so a model update on the Hub cannot silently change behaviour.
 - **Uploads.** `POST /v1/documents` accepts only supported extensions and enforces
   `CITEWELL_MAX_UPLOAD_MB`. Filenames are reduced to their basename. PDF parsing uses `pypdf`; keep
   dependencies up to date (Dependabot is enabled).

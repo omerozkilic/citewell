@@ -16,12 +16,14 @@ working directory. See `.env.example` in the repository.
 |---|---|---|
 | `CITEWELL_EMBEDDING_BACKEND` | `sentence-transformers` | `hash` = lexical test stand-in |
 | `CITEWELL_EMBEDDING_MODEL` | `BAAI/bge-m3` | or `intfloat/multilingual-e5-large` / `-base` |
+| `CITEWELL_EMBEDDING_REVISION` | – | Pin the embedding model to a Hugging Face commit hash. `citewell models download` prints the hash of what it fetched. |
 | `CITEWELL_EMBEDDING_DIM` | `1024` | **fixed per database** (768 for e5-base) |
 | `CITEWELL_EMBEDDING_DEVICE` | auto | `cpu`, `cuda`, `mps` |
 | `CITEWELL_EMBEDDING_BATCH_SIZE` | `16` | |
 | `CITEWELL_MAX_SEQ_LENGTH` | `512` | tokens per chunk passed to the model |
 | `CITEWELL_RERANKER_BACKEND` | `sentence-transformers` | `none` disables, `lexical` = test stand-in |
 | `CITEWELL_RERANKER_MODEL` | `BAAI/bge-reranker-v2-m3` | |
+| `CITEWELL_RERANKER_REVISION` | – | Pin the reranker to a Hugging Face commit hash. |
 | `CITEWELL_RERANK_BY_DEFAULT` | `false` | clients can still pass `rerank=true` |
 | `CITEWELL_RERANK_CANDIDATES` | `30` | how many fused candidates are reranked |
 
@@ -53,6 +55,8 @@ to start with a different configuration rather than silently mixing incompatible
 | `CITEWELL_API_TOKEN` | unset | bearer token for REST and HTTP MCP |
 | `CITEWELL_ALLOWED_HOSTS` | `[]` | extra `Host` values for DNS-rebinding protection, JSON list, e.g. `["citewell:*"]` |
 | `CITEWELL_MAX_UPLOAD_MB` | `50` | |
+| `CITEWELL_MAX_DOCUMENT_PAGES` | `5000` | Reject PDFs with more pages (`0` = no limit). |
+| `CITEWELL_MAX_UNPACKED_MB` / `_MAX_ZIP_RATIO` | `200` / `200` | Reject DOCX files that unpack to more than this size or compress more than this ratio (zip bombs). |
 | `CITEWELL_LOG_LEVEL` | `INFO` | |
 | `CITEWELL_PRELOAD_MODELS` | `true` | `serve` / `mcp` load the embedding model in the background at startup |
 

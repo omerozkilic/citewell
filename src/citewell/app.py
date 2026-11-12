@@ -94,6 +94,7 @@ class Citewell:
                         device=s.embedding_device,
                         batch_size=s.embedding_batch_size,
                         max_seq_length=s.max_seq_length,
+                        revision=s.embedding_revision,
                     )
         return self._embedder
 
@@ -104,7 +105,9 @@ class Citewell:
                 if not self._reranker_loaded:
                     self._prefer_offline()
                     s = self.settings
-                    self._reranker = build_reranker(s.reranker_backend, s.reranker_model, s.embedding_device)
+                    self._reranker = build_reranker(
+                        s.reranker_backend, s.reranker_model, s.embedding_device, revision=s.reranker_revision
+                    )
                     self._reranker_loaded = True
         return self._reranker
 

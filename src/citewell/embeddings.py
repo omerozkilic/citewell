@@ -120,6 +120,7 @@ class SentenceTransformerEmbedder:
         device: str | None = None,
         batch_size: int = 16,
         max_seq_length: int = 512,
+        revision: str | None = None,
     ):
         try:
             from sentence_transformers import SentenceTransformer
@@ -129,7 +130,8 @@ class SentenceTransformerEmbedder:
                 "pip install 'citewell[models]' (or set CITEWELL_EMBEDDING_BACKEND=hash for testing)."
             ) from exc
         log.info("loading embedding model %s", model_name)
-        self._model = load_cached_first(SentenceTransformer, model_name, device=device)
+        extra = {"revision": revision} if revision else {}
+        self._model = load_cached_first(SentenceTransformer, model_name, device=device, **extra)
         self._model.max_seq_length = max_seq_length
         self.name = model_name
         get_dim = (
@@ -177,11 +179,17 @@ def build_embedder(
     device: str | None = None,
     batch_size: int = 16,
     max_seq_length: int = 512,
+    revision: str | None = None,
 ) -> Embedder:
     if backend == "hash":
         return HashEmbedder(dim=dim)
     if backend == "sentence-transformers":
         return SentenceTransformerEmbedder(
-            model_name, dim=dim, device=device, batch_size=batch_size, max_seq_length=max_seq_length
+            model_name,
+            dim=dim,
+            device=device,
+            batch_size=batch_size,
+            max_seq_length=max_seq_length,
+            revision=revision,
         )
     raise ValueError(f"unknown embedding backend: {backend}")
