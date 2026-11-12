@@ -2,7 +2,7 @@
 
 Citewell speaks MCP over two transports:
 
-- **stdio** — `citewell mcp`; the client starts the process.
+- **stdio** — `citewell mcp`; the client starts the process. (Registry clients run `uvx citewell mcp`: install the `models` extra, or set `CITEWELL_EMBEDDING_BACKEND=hash` for a demo.)
 - **Streamable HTTP** — `http://localhost:8000/mcp`, served by `citewell serve` / Docker Compose.
 
 ## Claude Code
