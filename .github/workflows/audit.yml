@@ -1,0 +1,26 @@
+name: Dependency audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths: [pyproject.toml, uv.lock, .github/workflows/audit.yml]
+  schedule:
+    - cron: "17 5 * * 1"  # weekly: new advisories appear without any code change
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pip-audit:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Export locked runtime dependencies (all extras)
+        run: uv export --locked --no-dev --all-extras --no-hashes --no-emit-project -o requirements-audit.txt
+      - name: Audit against the PyPI advisory database
+        # --no-deps: the lockfile is already fully resolved; --disable-pip: no environment is built.
+        run: uvx pip-audit==2.10.1 -r requirements-audit.txt --no-deps --disable-pip --strict

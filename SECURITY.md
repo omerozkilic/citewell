@@ -41,5 +41,10 @@ Citewell is designed to run **locally or inside a trusted network**. Things to k
   dependencies up to date (Dependabot is enabled).
 - **Database credentials.** The defaults in `compose.yaml` are for local development. Change
   `CITEWELL_DB_PASSWORD` for anything else.
+- **Supply chain.** CI runs `pip-audit` on the locked dependencies (on every dependency change and weekly)
+  and scans the Docker image with Trivy (HIGH/CRITICAL, fixable only). Each release attaches a CycloneDX
+  SBOM, and the wheel, sdist and container image carry build-provenance attestations. Verify with
+  `gh attestation verify <file> --repo omerozkilic/citewell` or, for the image,
+  `gh attestation verify oci://ghcr.io/omerozkilic/citewell:<version> --repo omerozkilic/citewell`.
 - **Offline operation.** After `citewell models download`, set `HF_HUB_OFFLINE=1` to guarantee that no
   network calls are made to model hubs. Citewell itself never calls an LLM or any external API.
