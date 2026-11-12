@@ -31,6 +31,11 @@ SUPPORTED_SUFFIXES: dict[str, str] = {
     ".html": "text/html",
     ".htm": "text/html",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".csv": "text/csv",
+    ".epub": "application/epub+zip",
+    ".eml": "message/rfc822",
 }
 
 
@@ -53,20 +58,18 @@ class LoadLimits(NamedTuple):
 DEFAULT_LIMITS = LoadLimits()
 
 
-def _check_zip(data: bytes, limits: LoadLimits) -> None:
-    """Reject DOCX (zip) files that would unpack to an unreasonable size."""
+def check_zip(data: bytes, limits: LoadLimits) -> None:
+    """Reject ZIP-based documents (DOCX, PPTX, XLSX, EPUB) that would unpack to an unreasonable size."""
     try:
         infos = zipfile.ZipFile(io.BytesIO(data)).infolist()
     except zipfile.BadZipFile as exc:
-        raise UnsupportedFormatError("not a valid DOCX file") from exc
+        raise UnsupportedFormatError("not a valid ZIP-based document") from exc
     unpacked = sum(i.file_size for i in infos)
     if limits.max_unpacked_bytes and unpacked > limits.max_unpacked_bytes:
         mb, cap = unpacked // (1024 * 1024), limits.max_unpacked_bytes // (1024 * 1024)
-        raise LimitExceededError(f"DOCX unpacks to {mb} MB, over the {cap} MB limit")
+        raise LimitExceededError(f"document unpacks to {mb} MB, over the {cap} MB limit")
     if limits.max_zip_ratio and unpacked > 10 * 1024 * 1024 and unpacked > len(data) * limits.max_zip_ratio:
-        raise LimitExceededError(
-            f"DOCX compression ratio exceeds {limits.max_zip_ratio}:1 (possible zip bomb)"
-        )
+        raise LimitExceededError(f"compression ratio exceeds {limits.max_zip_ratio}:1 (possible zip bomb)")
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -298,7 +301,7 @@ def load_html(text: str) -> tuple[list[Page], dict[str, str]]:
 
 
 def load_docx(data: bytes, limits: LoadLimits = DEFAULT_LIMITS) -> tuple[list[Page], dict[str, str]]:
-    _check_zip(data, limits)
+    check_zip(data, limits)
     try:
         import docx
     except ImportError as exc:  # pragma: no cover - optional dependency
@@ -325,12 +328,30 @@ def load_docx(data: bytes, limits: LoadLimits = DEFAULT_LIMITS) -> tuple[list[Pa
 
 _Loader = Callable[[bytes, LoadLimits], tuple[list[Page], dict[str, str]]]
 
+
+def _extra(name: str) -> _Loader:
+    """Loaders in ``extra_loaders`` (imported lazily: that module imports this one)."""
+
+    def run(data: bytes, limits: LoadLimits) -> tuple[list[Page], dict[str, str]]:
+        from citewell import extra_loaders
+
+        loader: _Loader = getattr(extra_loaders, name)
+        return loader(data, limits)
+
+    return run
+
+
 _LOADERS: dict[str, _Loader] = {
     "application/pdf": load_pdf,
     "text/markdown": lambda b, _l: load_markdown(_decode(b)),
     "text/plain": lambda b, _l: load_text(_decode(b)),
     "text/html": lambda b, _l: load_html(_decode(b)),
     SUPPORTED_SUFFIXES[".docx"]: load_docx,
+    SUPPORTED_SUFFIXES[".pptx"]: _extra("load_pptx"),
+    SUPPORTED_SUFFIXES[".xlsx"]: _extra("load_xlsx"),
+    SUPPORTED_SUFFIXES[".csv"]: _extra("load_csv"),
+    SUPPORTED_SUFFIXES[".epub"]: _extra("load_epub"),
+    SUPPORTED_SUFFIXES[".eml"]: _extra("load_eml"),
 }
 
 

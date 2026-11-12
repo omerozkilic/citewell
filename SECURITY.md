@@ -38,6 +38,9 @@ Citewell is designed to run **locally or inside a trusted network**. Things to k
   capabilities dropped and `no-new-privileges`; only `/models` (volume) and `/tmp` are writable.
 - **Parser limits.** PDFs above `CITEWELL_MAX_DOCUMENT_PAGES` and DOCX files that unpack beyond
   `CITEWELL_MAX_UNPACKED_MB` or compress beyond `CITEWELL_MAX_ZIP_RATIO` are rejected before parsing.
+- **Office and e-book files.** PPTX, XLSX and EPUB (like DOCX) are ZIP archives and go through the same
+  size and compression-ratio limits; their XML is parsed with `defusedxml` with DTDs refused, so entity
+  expansion attacks are rejected. Hidden XLSX sheets and speaker notes are not indexed.
 - **Models.** Citewell never enables `trust_remote_code` (a test enforces it). Set
   `CITEWELL_EMBEDDING_REVISION` / `CITEWELL_RERANKER_REVISION` to a commit hash (printed by
   `citewell models download`) so a model update on the Hub cannot silently change behaviour.
