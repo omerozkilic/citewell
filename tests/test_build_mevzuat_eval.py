@@ -89,3 +89,25 @@ def test_bundled_questions_are_valid() -> None:
         assert q["id"] not in ids
         ids.add(q["id"])
     assert len(lines) >= 30
+
+
+def test_question_set_is_well_formed() -> None:
+    path = ROOT / "examples" / "eval" / "mevzuat-questions.jsonl"
+    rows = [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.startswith("//")
+    ]
+    ids = [r["id"] for r in rows]
+    assert len(ids) == len(set(ids)), "duplicate question ids"
+    queries = [(r["law"], r["query"]) for r in rows]
+    assert len(queries) == len(set(queries)), "duplicate questions for the same law"
+    for r in rows:
+        assert set(r) == {"id", "law", "article", "query", "tags"}, r["id"]
+        assert r["law"] in {"4857", "6698", "2709"} and isinstance(r["article"], int) and r["article"] > 0
+        assert r["query"].endswith("?") and r["tags"], r["id"]
+    per_law = {law: sum(1 for r in rows if r["law"] == law) for law in {"4857", "6698", "2709"}}
+    assert per_law["6698"] >= 15 and per_law["2709"] >= 15, per_law  # KVKK and the Constitution are covered
+    # Constitution articles stay within its 177 main articles; KVKK within its 33.
+    assert all(r["article"] <= 177 for r in rows if r["law"] == "2709")
+    assert all(r["article"] <= 33 for r in rows if r["law"] == "6698")

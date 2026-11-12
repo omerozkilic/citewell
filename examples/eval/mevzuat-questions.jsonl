@@ -32,8 +32,26 @@
 {"id": "kv08", "law": "6698", "article": 12, "query": "Veri ihlali olursa kime bildirim yapılır?", "tags": ["paraphrase"]}
 {"id": "kv09", "law": "6698", "article": 13, "query": "Veri sorumlusuna yapılan başvuru kaç gün içinde sonuçlandırılır?", "tags": ["exact"]}
 {"id": "kv10", "law": "6698", "article": 16, "query": "Veri sorumluları sicili nedir, kimler kaydolmalı?", "tags": ["exact"]}
+{"id": "kv11", "law": "6698", "article": 4, "query": "Kişisel verilerin işlenmesinde hangi ilkelere uyulması zorunludur?", "tags": ["exact"]}
+{"id": "kv12", "law": "6698", "article": 8, "query": "Kişisel veriler ilgili kişinin rızası olmadan üçüncü kişilere hangi hâllerde aktarılabilir?", "tags": ["paraphrase"]}
+{"id": "kv13", "law": "6698", "article": 14, "query": "Veri sorumlusunun cevabı yetersizse Kurula kaç gün içinde şikâyet edilebilir?", "tags": ["numbers"]}
+{"id": "kv14", "law": "6698", "article": 15, "query": "Kurul hangi şikâyetleri incelemeye almaz?", "tags": ["reasoning"]}
+{"id": "kv15", "law": "6698", "article": 17, "query": "Kişisel verilere ilişkin suçlarda Türk Ceza Kanununun hangi maddeleri uygulanır?", "tags": ["cross-reference", "numbers"]}
+{"id": "kv16", "law": "6698", "article": 12, "query": "Veri sorumlusu verilerin güvenliği için hangi tedbirleri almak zorundadır?", "tags": ["paraphrase"]}
 {"id": "an01", "law": "2709", "article": 101, "query": "Cumhurbaşkanı kaç yıllığına ve en fazla kaç kez seçilebilir?", "tags": ["exact"]}
 {"id": "an02", "law": "2709", "article": 76, "query": "Milletvekili seçilebilmek için kaç yaşında olmak gerekir?", "tags": ["paraphrase"]}
 {"id": "an03", "law": "2709", "article": 3, "query": "Türkiye'nin resmi dili ve başkenti nedir?", "tags": ["exact"]}
 {"id": "an04", "law": "2709", "article": 42, "query": "İlköğretim zorunlu ve parasız mıdır?", "tags": ["exact"]}
 {"id": "an05", "law": "2709", "article": 20, "query": "Kişisel verilerin korunmasını isteme hakkı Anayasada nerede düzenlenir?", "tags": ["cross-reference"]}
+{"id": "an06", "law": "2709", "article": 2, "query": "Türkiye Cumhuriyeti'nin nitelikleri nelerdir?", "tags": ["exact"]}
+{"id": "an07", "law": "2709", "article": 6, "query": "Egemenlik kimindir ve kimseye bırakılabilir mi?", "tags": ["paraphrase"]}
+{"id": "an08", "law": "2709", "article": 10, "query": "Kanun önünde eşitlik ilkesine göre hangi sebeplerle ayırım yapılamaz?", "tags": ["exact"]}
+{"id": "an09", "law": "2709", "article": 17, "query": "Kişinin vücut bütünlüğüne hangi hâllerde dokunulabilir, işkence yasak mıdır?", "tags": ["reasoning"]}
+{"id": "an10", "law": "2709", "article": 26, "query": "Düşünce ve kanaatleri açıklama ve yayma hürriyeti nasıl düzenlenmiştir?", "tags": ["exact"]}
+{"id": "an11", "law": "2709", "article": 33, "query": "Dernek kurmak için önceden izin almak gerekir mi?", "tags": ["paraphrase"]}
+{"id": "an12", "law": "2709", "article": 77, "query": "Milletvekilliği ve Cumhurbaşkanlığı seçimleri kaç yılda bir yapılır?", "tags": ["numbers"]}
+{"id": "an13", "law": "2709", "article": 116, "query": "Meclis seçimlerin yenilenmesine hangi çoğunlukla karar verebilir?", "tags": ["numbers"]}
+{"id": "an14", "law": "2709", "article": 138, "query": "Hâkimlerin bağımsızlığı Anayasada nasıl güvence altına alınmıştır?", "tags": ["paraphrase"]}
+{"id": "an15", "law": "2709", "article": 146, "query": "Anayasa Mahkemesi kaç üyeden kurulur?", "tags": ["numbers"]}
+{"id": "an16", "law": "2709", "article": 148, "query": "Anayasa Mahkemesine bireysel başvuru yapılabilir mi?", "tags": ["paraphrase"]}
+{"id": "an17", "law": "2709", "article": 104, "query": "Cumhurbaşkanı Devletin başı olarak hangi görevleri yürütür?", "tags": ["exact"]}

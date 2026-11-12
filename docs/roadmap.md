@@ -27,7 +27,7 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
 - [x] OCR for scanned PDFs (Tesseract `tur`) ([#17](https://github.com/omerozkilic/citewell/issues/17))
 - [x] Better tables in PDFs ([#18](https://github.com/omerozkilic/citewell/issues/18))
 - [x] `citewell watch`: re-index a folder when files change ([#19](https://github.com/omerozkilic/citewell/issues/19))
-- [ ] Complete the legislation eval with KVKK and the Constitution ([#20](https://github.com/omerozkilic/citewell/issues/20))
+- [x] Complete the legislation eval with KVKK and the Constitution ([#20](https://github.com/omerozkilic/citewell/issues/20))
 - [ ] List Citewell in the official MCP Registry (`server.json` ready; publish after the release, see CONTRIBUTING) ([#21](https://github.com/omerozkilic/citewell/issues/21))
 - [ ] More Turkish eval questions ([#22](https://github.com/omerozkilic/citewell/issues/22))
 - [x] `citewell doctor`: diagnose the install ([#35](https://github.com/omerozkilic/citewell/issues/35))
