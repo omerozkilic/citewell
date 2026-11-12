@@ -170,6 +170,54 @@ def ingest(
         raise typer.Exit(2)
 
 
+@app.command()
+def watch(
+    paths: Annotated[list[Path], typer.Argument(help="Folders (or files) to keep in sync.", exists=True)],
+    collection: Annotated[str | None, typer.Option("--collection", "-c", help="Target collection.")] = None,
+    language: Annotated[
+        Lang | None, typer.Option("--language", "-l", help="Text-search language for a new collection.")
+    ] = None,
+    interval: Annotated[float, typer.Option(help="Seconds between checks for changes.", min=0.2)] = 2.0,
+    recursive: Annotated[bool, typer.Option(help="Recurse into directories.")] = True,
+    prune: Annotated[
+        bool,
+        typer.Option(
+            "--prune",
+            help="Also remove documents whose files were deleted (after being missing for two checks).",
+        ),
+    ] = False,
+) -> None:
+    """Re-index files as they are added or changed. Stop with Ctrl+C."""
+    from citewell.watch import Watcher, WatchEvent, run_watch
+
+    cw = _citewell()
+    target = collection or cw.settings.default_collection
+    style = {"ingested": "green", "unchanged": "dim", "skipped": "yellow", "error": "red", "removed": "red"}
+
+    def report(event: WatchEvent) -> None:
+        if event.kind == "unchanged":
+            return  # a touched file with identical content is not news
+        extra = f" — {event.detail}" if event.detail else ""
+        console.print(f"[{style[event.kind]}]{event.kind:>9}[/] {event.source}{extra}")
+
+    try:
+        cw.check_schema()
+        with console.status("loading embedding model…"):
+            _ = cw.embedder
+        names = ", ".join(str(p) for p in paths)
+        console.print(f"watching {names} → '{target}' (every {interval:g}s, Ctrl+C to stop)")
+        watcher = Watcher(cw.ingest, cw.store, paths, target, language, recursive=recursive, prune=prune)
+        run_watch(watcher, interval=interval, on_event=report)
+    except KeyboardInterrupt:
+        console.print("stopped")
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        raise _fail(str(exc)) from exc
+    finally:
+        cw.close()
+
+
 def _prune(cw: Citewell, collection: str, seen: list[str], yes: bool) -> list[str]:
     if not seen:
         # A typo in PATHS must not empty the whole collection.
