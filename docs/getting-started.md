@@ -91,7 +91,27 @@ Run `citewell doctor` at any time to check the database, pgvector version, schem
 
 PPTX, XLSX, CSV, EPUB and EML need no extra install. Legacy binary Office files (`.doc`, `.xls`, `.ppt`) are not supported.
 
-Scanned PDFs without a text layer are reported as `skipped`; OCR is on the roadmap.
+Pages without a text layer (scans) are not searchable by default: ingest warns about them, or reports the document
+as `skipped` when no page has text. Turn on OCR to read them, see below.
+
+### Scanned PDFs (OCR)
+
+OCR runs locally with [Tesseract](https://github.com/tesseract-ocr/tesseract); nothing leaves your machine. It is off
+by default and only touches pages that have no text layer, so PDFs with real text are not slowed down.
+
+```bash
+pip install 'citewell[ocr]'                       # or: uv tool install "citewell[models,ocr]"
+sudo apt-get install tesseract-ocr tesseract-ocr-tur    # macOS: brew install tesseract tesseract-lang
+CITEWELL_OCR=auto citewell ingest ./taramalar --force
+citewell doctor                                    # checks the packages, the binary and the language data
+```
+
+Page numbers are the PDF's, as usual. OCR text is an approximation of the printed text, so pages that came from it are
+recorded: `citewell documents list` shows `3 (2 OCR)` and the REST/JSON listing has `ocr_pages`. Treat quotes from
+those pages accordingly (`verify_quote` compares against the recognised text, not the image).
+Languages default to `tur+eng` (`CITEWELL_OCR_LANGUAGES`); `CITEWELL_OCR_DPI`, `CITEWELL_OCR_TIMEOUT_S` and
+`CITEWELL_OCR_MAX_PAGES` (default 500 pages per document) bound the work. The Docker image includes Tesseract with
+Turkish data (`--build-arg WITH_OCR=false` leaves it out).
 
 ### Tables in PDFs
 

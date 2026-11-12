@@ -187,6 +187,25 @@ def check_pdf_tables(s: Settings) -> list[Check]:
     return [Check("pdf tables", "ok", "ruled tables are indexed as Markdown rows")]
 
 
+def check_ocr(s: Settings) -> list[Check]:
+    if s.ocr == "off":
+        return []
+    from citewell.ocr import OcrOptions, OcrUnavailableError, check_available
+
+    try:
+        detail = check_available(OcrOptions(s.ocr_languages))
+    except OcrUnavailableError as exc:
+        return [
+            Check(
+                "ocr",
+                "fail",
+                str(exc),
+                "Install `citewell[ocr]` and tesseract with the tur data, or set CITEWELL_OCR=off.",
+            )
+        ]
+    return [Check("ocr", "ok", detail)]
+
+
 def check_server(s: Settings) -> list[Check]:
     if s.api_token:
         return [Check("api token", "ok", "set")]
@@ -210,6 +229,7 @@ def run_checks(s: Settings) -> list[Check]:
     checks += check_database(s)
     checks += check_models(s)
     checks += check_pdf_tables(s)
+    checks += check_ocr(s)
     checks += check_server(s)
     return checks
 

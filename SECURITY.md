@@ -41,6 +41,9 @@ Citewell is designed to run **locally or inside a trusted network**. Things to k
 - **Office and e-book files.** PPTX, XLSX and EPUB (like DOCX) are ZIP archives and go through the same
   size and compression-ratio limits; their XML is parsed with `defusedxml` with DTDs refused, so entity
   expansion attacks are rejected. Hidden XLSX sheets and speaker notes are not indexed.
+- **OCR.** When enabled (`CITEWELL_OCR=auto`), pages are rendered in-process and recognised by a local
+  `tesseract` subprocess with a per-page timeout and a per-document page cap. Nothing is sent over the
+  network. OCR text is approximate and is marked as such (`ocr_pages`).
 - **Models.** Citewell never enables `trust_remote_code` (a test enforces it). Set
   `CITEWELL_EMBEDDING_REVISION` / `CITEWELL_RERANKER_REVISION` to a commit hash (printed by
   `citewell models download`) so a model update on the Hub cannot silently change behaviour.

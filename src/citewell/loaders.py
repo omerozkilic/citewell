@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, ClassVar, NamedTuple
 
 from citewell.models import LoadedDocument, Page
+from citewell.ocr import OcrOptions, OcrSession, OcrUnavailableError
 from citewell.text import clean_text, reflow
 
 log = logging.getLogger(__name__)
@@ -131,7 +132,10 @@ def _page_text_with_tables(page: Any) -> str | None:
 
 
 def load_pdf(
-    data: bytes, limits: LoadLimits = DEFAULT_LIMITS, tables: bool = False
+    data: bytes,
+    limits: LoadLimits = DEFAULT_LIMITS,
+    tables: bool = False,
+    ocr: OcrOptions | None = None,
 ) -> tuple[list[Page], dict[str, str]]:
     from pypdf import PdfReader
 
@@ -149,6 +153,8 @@ def load_pdf(
         plumber = pdfplumber.open(io.BytesIO(data))
     labels = _page_labels(reader)
     pages: list[Page] = []
+    session: OcrSession | None = None
+    ocr_budget = ocr.max_pages if ocr and ocr.max_pages else None
     try:
         for i, page in enumerate(reader.pages, start=1):
             text: str | None = None
@@ -163,11 +169,23 @@ def load_pdf(
                 except Exception as exc:  # pragma: no cover - malformed PDFs
                     log.warning("page %s could not be extracted: %s", i, exc)
                     text = ""
+            recognised = False
+            if ocr is not None and not text.strip() and (ocr_budget is None or ocr_budget > 0):
+                try:
+                    session = session or OcrSession(data, ocr)
+                    text = reflow(clean_text(session.page_text(i - 1)))
+                except OcrUnavailableError as exc:
+                    raise UnsupportedFormatError(f"OCR is enabled but unavailable: {exc}") from exc
+                recognised = bool(text.strip())
+                if ocr_budget is not None:
+                    ocr_budget -= 1
             label = labels[i - 1] if labels and i - 1 < len(labels) else None
-            pages.append(Page(number=i, text=text, label=label))
+            pages.append(Page(number=i, text=text, label=label, ocr=recognised))
     finally:
         if plumber is not None:
             plumber.close()
+        if session is not None:
+            session.close()
     meta: dict[str, str] = {}
     if reader.metadata:
         if reader.metadata.title:
@@ -369,19 +387,22 @@ def load_bytes(
     mime: str | None = None,
     limits: LoadLimits = DEFAULT_LIMITS,
     pdf_tables: bool = False,
+    ocr: OcrOptions | None = None,
 ) -> LoadedDocument:
     mime = mime or detect_mime(source)
     if mime == "application/pdf":
-        pages, meta = load_pdf(data, limits, tables=pdf_tables)
+        pages, meta = load_pdf(data, limits, tables=pdf_tables, ocr=ocr)
     else:
         pages, meta = _LOADERS[mime](data, limits)
     title = meta.pop("title", None) or Path(source).stem.replace("_", " ").replace("-", " ")
     with_text = [p for p in pages if p.text.strip()]
     metadata: dict[str, Any] = dict(meta)
     if mime == "application/pdf":
-        # Pages without a text layer are usually scanned images; OCR is not supported yet.
+        # Pages without a text layer are usually scanned images (see CITEWELL_OCR).
         metadata["total_pages"] = len(pages)
         metadata["pages_without_text"] = len(pages) - len(with_text)
+        if ocr_pages := [p.number for p in with_text if p.ocr]:
+            metadata["ocr_pages"] = ocr_pages
     return LoadedDocument(
         source=source,
         title=title,

@@ -223,6 +223,7 @@ class Store:
         sql = """
             SELECT d.id, col.name AS collection, d.source, d.title, d.mime, d.sha256, d.page_count,
                    (d.metadata->>'pages_without_text')::int AS pages_without_text,
+                   d.metadata->'ocr_pages' AS ocr_pages,
                    d.ingested_at, (SELECT count(*) FROM chunks c WHERE c.document_id = d.id) AS chunk_count
             FROM documents d JOIN collections col ON col.id = d.collection_id
         """

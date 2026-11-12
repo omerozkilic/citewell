@@ -96,6 +96,16 @@ class Settings(BaseSettings):
         default=False,
         description="Render ruled tables in PDFs as Markdown rows (needs `pip install 'citewell[tables]'`).",
     )
+    ocr: Literal["off", "auto"] = Field(
+        default="off",
+        description="'auto' runs OCR on PDF pages with no text layer (needs `citewell[ocr]` + tesseract).",
+    )
+    ocr_languages: str = Field(default="tur+eng", description="Tesseract languages, e.g. 'tur+eng'.")
+    ocr_dpi: int = Field(default=300, ge=72, le=600, description="Resolution pages are rendered at for OCR.")
+    ocr_timeout_s: int = Field(default=120, ge=1, description="Give up on one page after this many seconds.")
+    ocr_max_pages: int = Field(
+        default=500, ge=0, description="OCR at most this many pages per document (0 = no limit)."
+    )
     max_upload_mb: int = 50
     max_document_pages: int = Field(
         default=5000, ge=0, description="Reject PDFs with more pages (0 = no limit)."

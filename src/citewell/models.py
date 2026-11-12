@@ -15,6 +15,7 @@ class Page(BaseModel):
     text: str
     section: str | None = None
     label: str | None = None  # printed page label from the PDF (e.g. "iv", "12"), if it differs
+    ocr: bool = False  # text was recognised from an image (OCR), not read from a text layer
 
 
 class LoadedDocument(BaseModel):
@@ -56,6 +57,9 @@ class DocumentInfo(BaseModel):
     page_count: int | None
     pages_without_text: int | None = Field(
         default=None, description="PDF pages with no text layer (scanned?) — not searchable."
+    )
+    ocr_pages: list[int] | None = Field(
+        default=None, description="PDF pages whose text was recognised by OCR (approximate)."
     )
     chunk_count: int = 0
     ingested_at: datetime | None = None

@@ -33,6 +33,7 @@ services:
       context: .
       args:
         WITH_MODELS: ${CITEWELL_WITH_MODELS:-true}
+        WITH_OCR: ${CITEWELL_WITH_OCR:-true}
     image: ghcr.io/omerozkilic/citewell:${CITEWELL_VERSION:-latest}
     restart: unless-stopped
     depends_on:
