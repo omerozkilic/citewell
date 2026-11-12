@@ -97,10 +97,14 @@ class Settings(BaseSettings):
         default=5000, ge=0, description="Reject PDFs with more pages (0 = no limit)."
     )
     max_unpacked_mb: int = Field(
-        default=200, ge=0, description="Reject DOCX files that unpack to more than this (0 = no limit)."
+        default=200,
+        ge=0,
+        description="Reject DOCX/PPTX/XLSX/EPUB that unpack to more than this size (0 = no limit).",
     )
     max_zip_ratio: int = Field(
-        default=200, ge=0, description="Reject DOCX files compressed more than this ratio (0 = no limit)."
+        default=200,
+        ge=0,
+        description="Reject DOCX/PPTX/XLSX/EPUB compressed more than this ratio (0 = no limit).",
     )
     allowed_hosts: list[str] = Field(
         default_factory=list,

@@ -26,7 +26,7 @@ flowchart LR
 
 | Module | Responsibility |
 |---|---|
-| `loaders` | File → `Page`s. PDF via pypdf (with line reflow), Markdown sections by heading path, text with form-feed pages, HTML, DOCX. NFC normalisation, hyphenation repair, cp1254 fallback. |
+| `loaders` | File → `Page`s. PDF via pypdf (with line reflow), Markdown sections by heading path, text with form-feed pages, HTML, DOCX, and (in `extra_loaders`, standard library only) PPTX slides, XLSX sheets, CSV, EPUB chapters and EML messages. NFC normalisation, hyphenation repair, cp1254 fallback. |
 | `chunking` | Sentence-ish units packed up to `chunk_size`, whole-sentence overlap, never across pages, offsets into the page text. |
 | `embeddings` | `SentenceTransformerEmbedder` (bge-m3, e5 with prefixes) and `HashEmbedder` (tests). |
 | `ingest` | Hash-based idempotency, contextual headers (title — section) for embedding, atomic replace. |

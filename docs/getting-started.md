@@ -82,6 +82,13 @@ Run `citewell doctor` at any time to check the database, pgvector version, schem
 | Plain text | page number if the file contains form feeds (`pdftotext` output), otherwise none |
 | Markdown | heading path, e.g. `Bilgi Güvenliği Politikası > Parola Kuralları` |
 | DOCX (`citewell[docx]`) | heading |
+| PPTX | slide number, plus the slide's first line as its title (speaker notes are not indexed) |
+| XLSX | sheet name; rows become lines with cells separated by ` | ` (hidden sheets are skipped, dates stay as stored numbers) |
+| CSV | – (rows as lines; `,` `;` tab and `\|` delimiters and legacy Turkish encodings are detected) |
+| EPUB | chapter title |
+| EML | subject; headers (subject, from, to, date) are part of the indexed text, attachments are not |
 | HTML | – |
+
+PPTX, XLSX, CSV, EPUB and EML need no extra install. Legacy binary Office files (`.doc`, `.xls`, `.ppt`) are not supported.
 
 Scanned PDFs without a text layer are reported as `skipped`; OCR is on the roadmap.

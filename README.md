@@ -77,7 +77,7 @@ Then [connect your assistant](#connect-your-assistant) — e.g. Claude Code:
 git clone https://github.com/omerozkilic/citewell && cd citewell
 docker compose up -d                                   # PostgreSQL + Citewell on localhost:8000
 
-cp -r ~/Documents/handbooks/* data/                    # PDF, Markdown, TXT, HTML, DOCX
+cp -r ~/Documents/handbooks/* data/                    # PDF, Markdown, TXT, HTML, DOCX, PPTX, XLSX, CSV, EPUB, EML
 docker compose run --rm citewell models download       # once (~2–3 GB), needs internet
 docker compose run --rm citewell ingest /data
 docker compose run --rm citewell search "yıllık izin kaç gün?"
@@ -219,7 +219,7 @@ curl -s -F file=@politika.pdf -F collection=handbook localhost:8000/v1/documents
 ```mermaid
 flowchart LR
   subgraph Ingest
-    F[PDF / MD / TXT / HTML / DOCX] --> L[Loaders<br/>pages & sections]
+    F[PDF / MD / TXT / HTML / DOCX / PPTX / XLSX / CSV / EPUB / EML] --> L[Loaders<br/>pages & sections]
     L --> C[Page-aware chunker<br/>verbatim slices]
     C --> E[bge-m3 embeddings<br/>+ title/section header]
   end

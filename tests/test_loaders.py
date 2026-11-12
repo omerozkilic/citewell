@@ -69,7 +69,7 @@ def test_sha_changes_with_content() -> None:
 
 def test_unsupported() -> None:
     with pytest.raises(UnsupportedFormatError):
-        detect_mime("a.xlsx")
+        detect_mime("a.xls")  # legacy binary Office files are not supported
 
 
 def test_iter_files_relative_sources_and_hidden(tmp_path: Path) -> None:
