@@ -15,6 +15,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from citewell import __version__
 from citewell.app import Citewell
+from citewell.config import MAX_QUERY_CHARS
 from citewell.db import SchemaMismatchError
 from citewell.loaders import SUPPORTED_SUFFIXES
 from citewell.mcp_server import build_server
@@ -27,13 +28,13 @@ from citewell.models import (
     SearchResponse,
 )
 from citewell.search import SearchRequest
-from citewell.store import NotFoundError
+from citewell.store import NotFoundError, QueryTimeoutError
 
 log = logging.getLogger(__name__)
 
 
 class SearchBody(BaseModel):
-    query: str = Field(min_length=1, max_length=2000)
+    query: str = Field(min_length=1, max_length=MAX_QUERY_CHARS)
     top_k: int = Field(default=5, ge=1, le=50)
     mode: Literal["hybrid", "vector", "keyword"] = "hybrid"
     collections: list[str] | None = None
@@ -137,6 +138,10 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
     async def _not_found(_: Request, exc: NotFoundError) -> JSONResponse:
         return JSONResponse({"detail": str(exc)}, status_code=404)
 
+    @api.exception_handler(QueryTimeoutError)
+    async def _timeout(_: Request, exc: QueryTimeoutError) -> JSONResponse:
+        return JSONResponse({"detail": str(exc)}, status_code=504)
+
     @api.exception_handler(ValueError)
     async def _bad_request(_: Request, exc: ValueError) -> JSONResponse:
         return JSONResponse({"detail": str(exc)}, status_code=400)
@@ -172,7 +177,7 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
     @api.get("/v1/search", response_model=SearchResponse, tags=["search"])
     def search_get(
         cw: Svc,
-        q: Annotated[str, Query(min_length=1, max_length=2000)],
+        q: Annotated[str, Query(min_length=1, max_length=MAX_QUERY_CHARS)],
         k: Annotated[int, Query(ge=1, le=50)] = 5,
         mode: Literal["hybrid", "vector", "keyword"] = "hybrid",
         collection: Annotated[list[str] | None, Query()] = None,

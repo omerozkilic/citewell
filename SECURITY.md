@@ -31,6 +31,11 @@ Citewell is designed to run **locally or inside a trusted network**. Things to k
   publishes ports on `127.0.0.1` only. The HTTP MCP endpoint validates `Host`/`Origin` headers against
   DNS-rebinding attacks. If you expose Citewell beyond localhost, set `CITEWELL_API_TOKEN` (bearer
   auth for REST and MCP) and put it behind TLS.
+- **Query limits.** Search queries are capped at 2000 characters and `top_k` at `CITEWELL_MAX_TOP_K` on
+  both REST and MCP, and every search runs under `CITEWELL_STATEMENT_TIMEOUT_MS` (default 15 s), so a
+  single expensive query cannot hold a database connection indefinitely.
+- **Container.** The Compose service runs as a non-root user with a read-only root filesystem, all Linux
+  capabilities dropped and `no-new-privileges`; only `/models` (volume) and `/tmp` are writable.
 - **Uploads.** `POST /v1/documents` accepts only supported extensions and enforces
   `CITEWELL_MAX_UPLOAD_MB`. Filenames are reduced to their basename. PDF parsing uses `pypdf`; keep
   dependencies up to date (Dependabot is enabled).

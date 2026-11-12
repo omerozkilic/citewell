@@ -45,6 +45,13 @@ services:
       CITEWELL_DATABASE_URL: postgresql://citewell:${CITEWELL_DB_PASSWORD:-citewell}@db:5432/citewell
       # Other containers (e.g. Open WebUI) reach the server as http://citewell:8000
       CITEWELL_ALLOWED_HOSTS: '["citewell:*"]'
+    # Hardening: the app only needs to write to the model cache volume and /tmp.
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     volumes:
       - models:/models
       - ./data:/data:ro

@@ -45,7 +45,7 @@ class Citewell:
 
     @cached_property
     def store(self) -> Store:
-        return Store(self.pool)
+        return Store(self.pool, self.settings.statement_timeout_ms)
 
     @property
     def embedding_model_id(self) -> str:

@@ -55,15 +55,33 @@ _CHUNK_SELECT = """
 """
 
 
+class QueryTimeoutError(RuntimeError):
+    """A search query exceeded ``statement_timeout_ms``."""
+
+
 class Store:
-    def __init__(self, pool: ConnectionPool):
+    def __init__(self, pool: ConnectionPool, statement_timeout_ms: int = 0):
         self.pool = pool
+        self.statement_timeout_ms = max(0, int(statement_timeout_ms))
         self._pgvector_version: tuple[int, ...] | None = None
 
     @contextmanager
     def conn(self) -> Iterator[psycopg.Connection]:
         with self.pool.connection() as conn:
             yield conn
+
+    @contextmanager
+    def read_tx(self) -> Iterator[psycopg.Connection]:
+        """Transaction for search queries with the statement timeout applied."""
+        try:
+            with self.conn() as conn, conn.transaction():
+                if self.statement_timeout_ms:
+                    conn.execute(f"SET LOCAL statement_timeout = {self.statement_timeout_ms}")
+                yield conn
+        except psycopg.errors.QueryCanceled as exc:
+            raise QueryTimeoutError(
+                f"search took longer than {self.statement_timeout_ms} ms and was cancelled"
+            ) from exc
 
     # ------------------------------------------------------------------ schema
 
@@ -305,7 +323,7 @@ class Store:
             ORDER BY c.embedding <=> %(q)s
             LIMIT %(lim)s
         """
-        with self.conn() as conn, conn.transaction():
+        with self.read_tx() as conn:
             conn.execute(f"SET LOCAL hnsw.ef_search = {max(40, min(1000, limit * 2))}")
             version = self.pgvector_version() or ()
             if version >= (0, 8):
@@ -361,7 +379,7 @@ class Store:
             ORDER BY score DESC, c.id
             LIMIT %(lim)s
         """
-        with self.conn() as conn:
+        with self.read_tx() as conn:
             rows = conn.execute(sql, params).fetchall()
         return [RetrievedId(str(r[0]), float(r[1])) for r in rows]
 
