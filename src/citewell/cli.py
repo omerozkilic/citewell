@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Annotated, Literal
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from citewell import __version__
@@ -64,7 +65,8 @@ def _citewell() -> Citewell:
 
 
 def _fail(msg: str, code: int = 1) -> typer.Exit:
-    console.print(f"[bold red]error:[/] {msg}")
+    # Messages often contain "pip install 'citewell[models]'": unescaped, Rich would swallow "[models]".
+    console.print(f"[bold red]error:[/] {escape(msg)}")
     return typer.Exit(code)
 
 
@@ -143,9 +145,10 @@ def ingest(
         extra = f" {res.chunks} chunks" if res.chunks else ""
         warn = res.status == "ingested" and res.message
         msg = f" — {res.message}" if res.message and not warn else ""
-        console.print(f"[{style.get(res.status, 'white')}]{res.status:>9}[/] {res.source}{extra}{msg}")
+        line = escape(f"{res.source}{extra}{msg}")
+        console.print(f"[{style.get(res.status, 'white')}]{res.status:>9}[/] {line}")
         if warn:
-            console.print(f"          [yellow]⚠ {res.message}[/]")
+            console.print(f"          [yellow]⚠ {escape(str(res.message))}[/]")
 
     try:
         cw.check_schema()
@@ -198,14 +201,14 @@ def watch(
         if event.kind == "unchanged":
             return  # a touched file with identical content is not news
         extra = f" — {event.detail}" if event.detail else ""
-        console.print(f"[{style[event.kind]}]{event.kind:>9}[/] {event.source}{extra}")
+        console.print(f"[{style[event.kind]}]{event.kind:>9}[/] {escape(event.source + extra)}")
 
     try:
         cw.check_schema()
         with console.status("loading embedding model…"):
             _ = cw.embedder
         names = ", ".join(str(p) for p in paths)
-        console.print(f"watching {names} → '{target}' (every {interval:g}s, Ctrl+C to stop)")
+        console.print(escape(f"watching {names} → '{target}' (every {interval:g}s, Ctrl+C to stop)"))
         watcher = Watcher(cw.ingest, cw.store, paths, target, language, recursive=recursive, prune=prune)
         run_watch(watcher, interval=interval, on_event=report)
     except KeyboardInterrupt:
@@ -228,13 +231,13 @@ def _prune(cw: Citewell, collection: str, seen: list[str], yes: bool) -> list[st
         return []
     console.print(f"[yellow]{len(stale)} document(s) in '{collection}' are no longer in PATHS:[/]")
     for source in stale:
-        console.print(f"  - {source}")
+        console.print(f"  - {escape(source)}")
     if not yes and not typer.confirm("Remove them from the index?", default=False):
         console.print("not pruned")
         return []
     for source in stale:
         cw.store.delete_document(collection, source)
-        console.print(f"[red]{'removed':>9}[/] {source}")
+        console.print(f"[red]{'removed':>9}[/] {escape(source)}")
     return stale
 
 
@@ -314,7 +317,7 @@ def verify(
             out.print(f"  [bold]{res.citation}[/]  [dim]{res.chunk_id}[/]")
         if res.source_text and res.match != "exact":
             out.print(f"  source: {res.source_text}", highlight=False)
-        console.print(f"[dim]{res.note}[/]")
+        console.print(f"[dim]{escape(res.note)}[/]")
     if not res.verified:
         raise typer.Exit(4)
 
@@ -668,9 +671,10 @@ def doctor(
     else:
         icons = {"ok": "[green]✓[/]", "warn": "[yellow]![/]", "fail": "[red]✗[/]"}
         for c in checks:
-            console.print(f"{icons[c.status]} {c.name}{': ' + c.detail if c.detail else ''}", highlight=False)
+            text = escape(f"{c.name}{': ' + c.detail if c.detail else ''}")
+            console.print(f"{icons[c.status]} {text}", highlight=False)
             if c.hint and c.status != "ok":
-                console.print(f"    [dim]→ {c.hint}[/]", highlight=False)
+                console.print(f"    [dim]→ {escape(c.hint)}[/]", highlight=False)
     if failed:
         raise typer.Exit(1)
 
@@ -682,7 +686,7 @@ def run() -> None:
     try:
         app(standalone_mode=True)
     except (DatabaseUnavailableError, SchemaMismatchError) as exc:
-        console.print(f"[bold red]error:[/] {exc}")
+        console.print(f"[bold red]error:[/] {escape(str(exc))}")
         raise SystemExit(1) from None
 
 
