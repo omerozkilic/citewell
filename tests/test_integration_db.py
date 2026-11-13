@@ -882,3 +882,33 @@ def test_documents_list_shows_ocr_pages(citewell: Citewell, monkeypatch: pytest.
     finally:
         config.get_settings.cache_clear()
     assert result.exit_code == 0 and "3 (2 OCR)" in result.stdout, result.stdout
+
+
+def test_cli_ingest_prints_warnings_for_pages_without_text(
+    citewell: Citewell, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from reportlab.pdfgen import canvas
+    from typer.testing import CliRunner
+
+    from citewell import config
+    from citewell.cli import app
+
+    pdf = tmp_path / "karisik.pdf"
+    c = canvas.Canvas(str(pdf))
+    c.drawString(72, 750, "Birinci sayfada gercek metin var.")
+    c.showPage()
+    c.showPage()  # a blank page, like a scan without OCR
+    c.save()
+    monkeypatch.setenv("CITEWELL_DATABASE_URL", make_settings().database_url)
+    monkeypatch.setenv("CITEWELL_EMBEDDING_BACKEND", "hash")
+    monkeypatch.setenv("CITEWELL_EMBEDDING_DIM", "256")
+    monkeypatch.delenv("CITEWELL_OCR", raising=False)
+    config.get_settings.cache_clear()
+    try:
+        result = CliRunner().invoke(app, ["ingest", str(pdf), "-c", "warn-test", "--force"])
+    finally:
+        config.get_settings.cache_clear()
+    assert result.exit_code == 0, result.output
+    assert "karisik.pdf" in result.output
+    assert "⚠ 1/2 pages have no extractable text" in result.output
+    assert "CITEWELL_OCR=auto" in result.output

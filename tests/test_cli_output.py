@@ -45,3 +45,16 @@ def test_doctor_hints_keep_the_extras(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.exit_code == 1
     assert "citewell[models]" in result.output
     assert "citewell[tables]" in result.output
+
+
+def test_run_prints_expected_errors_as_one_line(recorded: Console, monkeypatch: pytest.MonkeyPatch) -> None:
+    from citewell.db import DatabaseUnavailableError
+
+    def failing(**_: object) -> None:
+        raise DatabaseUnavailableError("cannot connect to PostgreSQL (see [docs])")
+
+    monkeypatch.setattr(cli, "app", failing)
+    with pytest.raises(SystemExit) as info:
+        cli.run()
+    assert info.value.code == 1
+    assert "error: cannot connect to PostgreSQL (see [docs])" in recorded.export_text()
