@@ -61,6 +61,7 @@ citewell = "citewell.cli:run"
 
 [dependency-groups]
 dev = [
+    "diff-cover>=9",
     "mypy>=1.11",
     "pdfplumber>=0.11",
     "pytesseract>=0.3.10",

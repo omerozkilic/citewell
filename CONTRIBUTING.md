@@ -47,6 +47,20 @@ uv run pytest --cov --cov-fail-under=85
 
 Optional: `uvx pre-commit install` to run ruff on every commit.
 
+### Patch coverage (Codecov)
+
+Besides the project total, Codecov's `patch` status checks the lines *your PR changes*: they must be
+covered at least as well as the project (about 92 %), or the check fails. Test every new or changed line,
+including error paths and CLI output. Measure it before you push, the way Codecov does:
+
+```bash
+export CITEWELL_TEST_DATABASE_URL=postgresql://citewell:citewell@localhost:5432/citewell_test
+scripts/check_patch_coverage.sh          # compares with origin/main, fails below 95 %, lists missing lines
+```
+
+Use a test database: code that talks to PostgreSQL is covered by the DB tests in CI, but looks uncovered
+if they are skipped, which makes the local number misleading.
+
 ## Releases and the MCP Registry
 
 Releases are cut by merging the release-please PR: it bumps the version, tags it and publishes to PyPI and
