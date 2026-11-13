@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.3.0](https://github.com/omerozkilic/citewell/compare/v0.2.0...v0.3.0) (2026-11-13)
+
+
+### Features
+
+* citewell doctor checks models, migrations and offline readiness ([#57](https://github.com/omerozkilic/citewell/issues/57)) ([83ea3d2](https://github.com/omerozkilic/citewell/commit/83ea3d29b36445c5a201728e72fe851853fa4fd7)), closes [#35](https://github.com/omerozkilic/citewell/issues/35)
+* citewell watch re-indexes a folder when files change ([#59](https://github.com/omerozkilic/citewell/issues/59)) ([1874a46](https://github.com/omerozkilic/citewell/commit/1874a4604d4b21515a526af913ca5e7cc8a3e7c7))
+* **eval:** 42 harder Turkish questions for the sample corpus ([#65](https://github.com/omerozkilic/citewell/issues/65)) ([f3ec769](https://github.com/omerozkilic/citewell/commit/f3ec769fa0243ab25f184de5d51707d9633102cc)), closes [#22](https://github.com/omerozkilic/citewell/issues/22)
+* **eval:** complete the legislation eval with KVKK and the Constitution ([#64](https://github.com/omerozkilic/citewell/issues/64)) ([b2ed351](https://github.com/omerozkilic/citewell/commit/b2ed35121ef6452fe8870f73898d73e07b3c2822)), closes [#20](https://github.com/omerozkilic/citewell/issues/20)
+* load PPTX, XLSX, CSV, EPUB and EML files ([#61](https://github.com/omerozkilic/citewell/issues/61)) ([93744f6](https://github.com/omerozkilic/citewell/commit/93744f6cdeccbbf40f47eed0f8e91078b06bb4af)), closes [#36](https://github.com/omerozkilic/citewell/issues/36)
+* OCR for scanned PDFs (opt-in, local Tesseract) ([#62](https://github.com/omerozkilic/citewell/issues/62)) ([fb80d49](https://github.com/omerozkilic/citewell/commit/fb80d491624df2bbb47d87a092207225c5180e14)), closes [#17](https://github.com/omerozkilic/citewell/issues/17)
+* render ruled PDF tables as Markdown rows (opt-in) ([#60](https://github.com/omerozkilic/citewell/issues/60)) ([b4c1ff4](https://github.com/omerozkilic/citewell/commit/b4c1ff4b633e019cd3d2dfd4b9c7b4194858bfd3)), closes [#18](https://github.com/omerozkilic/citewell/issues/18)
+* **security:** cap query length, add search statement timeout, harden compose ([#53](https://github.com/omerozkilic/citewell/issues/53)) ([48b1ec7](https://github.com/omerozkilic/citewell/commit/48b1ec7d730ddf4ba7f750d2d55765c9403c4ff4))
+* **security:** parser limits and model revision pinning ([#56](https://github.com/omerozkilic/citewell/issues/56)) ([328e620](https://github.com/omerozkilic/citewell/commit/328e6206c3295434641d466144ffe01567b02276))
+* server.json for the official MCP Registry ([#63](https://github.com/omerozkilic/citewell/issues/63)) ([28c6b34](https://github.com/omerozkilic/citewell/commit/28c6b34a3a1b626e4f114e81867762909bdcc8a7)), closes [#21](https://github.com/omerozkilic/citewell/issues/21)
+
+
+### Bug Fixes
+
+* **cli:** keep square brackets in printed messages (citewell[models]) ([#66](https://github.com/omerozkilic/citewell/issues/66)) ([17078d7](https://github.com/omerozkilic/citewell/commit/17078d775cc86d6802d0df7c2a6b87590b3bfb73))
+* **ingest:** log expected rejections as a warning, without a traceback ([#68](https://github.com/omerozkilic/citewell/issues/68)) ([1cdb19b](https://github.com/omerozkilic/citewell/commit/1cdb19b3ea4f5764707f711160150d4f9c2835f9))
+
+
+### Documentation
+
+* Docs/roadmap features ([#52](https://github.com/omerozkilic/citewell/issues/52)) ([bd06158](https://github.com/omerozkilic/citewell/commit/bd06158df55b746fdbd5631b8526131996267774))
+
 ## [0.2.0](https://github.com/omerozkilic/citewell/compare/v0.1.1...v0.2.0) (2026-11-08)
 
 
