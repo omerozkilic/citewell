@@ -134,6 +134,9 @@ class IngestService:
             try:
                 doc = self._load(path.read_bytes(), source)
                 res = self.ingest_document(doc, col, force=force)
+            except UnsupportedFormatError as exc:  # expected: unsupported, or over a safety limit
+                log.warning("not ingesting %s: %s", path, exc)  # no traceback: nothing crashed
+                res = IngestResult(source=source, status="error", message=f"{type(exc).__name__}: {exc}")
             except Exception as exc:  # keep going; report per-file errors
                 log.exception("failed to ingest %s", path)
                 res = IngestResult(source=source, status="error", message=f"{type(exc).__name__}: {exc}")
