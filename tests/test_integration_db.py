@@ -912,3 +912,44 @@ def test_cli_ingest_prints_warnings_for_pages_without_text(
     assert "karisik.pdf" in result.output
     assert "⚠ 1/2 pages have no extractable text" in result.output
     assert "CITEWELL_OCR=auto" in result.output
+
+
+def test_expected_rejections_are_logged_without_a_traceback(
+    citewell: Citewell, tmp_path: Any, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import io
+    import logging
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("xl/workbook.xml", b"0" * (30 * 1024 * 1024))  # a zip bomb
+    bomb = tmp_path / "bomb.xlsx"
+    bomb.write_bytes(buf.getvalue())
+    good = tmp_path / "ok.md"
+    good.write_text("# Not\n\nBu dosya sorunsuz indekslenir.", encoding="utf-8")
+
+    cw = Citewell(make_settings())
+    try:
+        with caplog.at_level(logging.WARNING, logger="citewell.ingest"):
+            results = {r.source: r for r in cw.ingest.ingest_paths([bomb, good], collection="reject-test")}
+        assert results["bomb.xlsx"].status == "error"
+        assert "zip bomb" in (results["bomb.xlsx"].message or "")
+        assert results["ok.md"].status == "ingested"  # the rest of the batch goes on
+        rejected = [r for r in caplog.records if "bomb.xlsx" in r.getMessage()]
+        assert rejected and all(r.levelno == logging.WARNING and r.exc_info is None for r in rejected)
+
+        # A genuine failure still gets its traceback.
+        caplog.clear()
+
+        def broken(*_: Any, **__: Any) -> None:
+            raise RuntimeError("database exploded")
+
+        service = cw.ingest  # one object: ``cw.ingest`` builds a new service on every access
+        monkeypatch.setattr(service, "ingest_document", broken)
+        with caplog.at_level(logging.WARNING, logger="citewell.ingest"):
+            failed = service.ingest_paths([good], collection="reject-test", force=True)[0]
+        assert failed.status == "error" and "database exploded" in (failed.message or "")
+        assert any(r.levelno == logging.ERROR and r.exc_info is not None for r in caplog.records)
+    finally:
+        cw.close()
