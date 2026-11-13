@@ -11,6 +11,7 @@ uv sync --group dev                       # install (+ --extra models for senten
 uv run ruff check . && uv run ruff format --check . && uv run mypy src   # lint + strict types
 CITEWELL_TEST_DATABASE_URL=postgresql://citewell:citewell@localhost:5432/citewell_test uv run pytest --cov
 docker compose up -d db                   # pgvector database for local work
+CITEWELL_TEST_DATABASE_URL=… scripts/check_patch_coverage.sh   # patch coverage vs origin/main, must be ≥ 95 %
 ```
 
 For quick end-to-end checks without model downloads:
@@ -37,3 +38,8 @@ For quick end-to-end checks without model downloads:
   or FastAPI dependencies must not use `from __future__ import annotations` (annotations are evaluated
   at registration time).
 - Conventional Commits; architecture decisions get an ADR in `docs/adr/`.
+- **Codecov must pass.** The `codecov/patch` check fails a PR whose changed lines are covered less than the
+  project is (~92 %). Every new or changed line needs a test, including error paths and CLI output. Before
+  pushing, run `scripts/check_patch_coverage.sh` **with a test database** (without one, database-backed lines
+  look uncovered, so the number is wrong); it must report ≥ 95 % and lists each missing line. Don't push a
+  branch that fails it, and don't lower thresholds or exclude code to get around it.
