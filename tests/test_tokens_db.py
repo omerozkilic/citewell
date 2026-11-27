@@ -168,37 +168,24 @@ def test_rest_writes_need_a_writable_token(client: TestClient, tokens: dict[str,
     reader, writer = _bearer(tokens["reader"]), _bearer(tokens["writer"])
     upload = {"files": {"file": ("scoped.txt", "Kapsamlı belge.".encode(), "text/plain")}}
 
-    assert client.post("/v1/documents", **upload, headers=reader).status_code == 403
-    assert client.post("/v1/collections", json={"name": "scoped-x"}, headers=reader).status_code == 403
-    assert (
-        client.delete(
-            "/v1/documents", params={"collection": "default", "source": "x"}, headers=reader
-        ).status_code
-        == 403
-    )
-    assert client.delete("/v1/collections/default", headers=reader).status_code == 403
-
-    assert (
-        client.post("/v1/documents", **upload, data={"collection": "handbook-en"}, headers=writer).status_code
-        == 403
-    )
-    assert client.post("/v1/collections", json={"name": "scoped-x"}, headers=writer).status_code == 403
-    assert client.delete("/v1/collections/handbook-en", headers=writer).status_code == 403
-    assert (
-        client.delete(
-            "/v1/documents", params={"collection": "handbook-en", "source": "x"}, headers=writer
-        ).status_code
-        == 403
-    )
+    denied = [
+        client.post("/v1/documents", **upload, headers=reader),
+        client.post("/v1/collections", json={"name": "scoped-x"}, headers=reader),
+        client.delete("/v1/documents", params={"collection": "default", "source": "x"}, headers=reader),
+        client.delete("/v1/collections/default", headers=reader),
+        client.post("/v1/documents", **upload, data={"collection": "handbook-en"}, headers=writer),
+        client.post("/v1/collections", json={"name": "scoped-x"}, headers=writer),
+        client.delete("/v1/collections/handbook-en", headers=writer),
+        client.delete("/v1/documents", params={"collection": "handbook-en", "source": "x"}, headers=writer),
+    ]
+    assert [r.status_code for r in denied] == [403] * len(denied)
 
     done = client.post("/v1/documents", **upload, headers=writer)  # no collection: the default one
     assert done.status_code == 200, done.text
-    assert (
-        client.delete(
-            "/v1/documents", params={"collection": "default", "source": "scoped.txt"}, headers=writer
-        ).status_code
-        == 204
+    removed = client.delete(
+        "/v1/documents", params={"collection": "default", "source": "scoped.txt"}, headers=writer
     )
+    assert removed.status_code == 204
 
 
 def _mcp_call(client: TestClient, token: str, method: str, params: dict[str, Any]) -> dict[str, Any]:
