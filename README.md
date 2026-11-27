@@ -200,6 +200,7 @@ citewell ingest PATH... [-c COL] [-l turkish|english|simple] [--force] [--prune 
 citewell search "query" [-k 5] [-m hybrid|vector|keyword] [-c COL|*] [--rerank] [--json]
                        [-T pdf] [--author NAME] [--after DATE] [--before DATE] [-t TAG]
 citewell verify "quote" [--chunk ID] [--source FILE] [-c COL]   exit code 4 if not found
+citewell cite CHUNK_ID… | -q "query" [-f bibtex|csl-json|md]     citations for your writing tools
 citewell serve [--init] [--host] [--port]      REST API + MCP at /mcp
 citewell mcp [--transport stdio|http]          MCP server only
 citewell eval DATASET.jsonl [-k 5] [-r vector,keyword,hybrid,hybrid+rerank] [-o report.json]
@@ -214,7 +215,7 @@ curl -s localhost:8000/v1/search -H 'content-type: application/json' \
 curl -s -F file=@politika.pdf -F collection=handbook localhost:8000/v1/documents
 ```
 
-`GET /health` · `POST|GET /v1/search` · `POST /v1/verify` · `GET /v1/chunks/{id}?context=1` · `GET|POST|DELETE /v1/collections` ·
+`GET /health` · `POST|GET /v1/search` · `POST /v1/verify` · `POST /v1/cite` · `GET /v1/chunks/{id}?context=1` · `GET|POST|DELETE /v1/collections` ·
 `GET|POST|DELETE /v1/documents` — full schema at `/docs`. Set `CITEWELL_API_TOKEN` to require a bearer token, or create per-collection tokens with `citewell tokens create`.
 
 ## How it works

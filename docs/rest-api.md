@@ -10,6 +10,7 @@ Interactive OpenAPI docs: `/docs`.
 | GET | `/v1/search?q=…&k=5&mode=hybrid&collection=…` | Same, as a query string; filters as `type`, `author`, `date_from`, `date_to`, `tag` (repeatable) |
 | POST | `/v1/verify` | Body: `quote`, optional `chunk_id`, `source`, `collections` — checks a quotation against the source |
 | GET | `/v1/chunks/{chunk_id}?context=1` | Chunk with neighbours |
+| POST | `/v1/cite` | Body: `chunk_ids`, `format` (`bibtex` default, `csl-json`, `md`) — citations as BibTeX, CSL-JSON or Markdown footnotes ([details](#citation-export)) |
 | GET | `/v1/collections` | List |
 | POST | `/v1/collections` | `{"name": "hr", "language": "turkish", "description": "…"}` |
 | DELETE | `/v1/collections/{name}` | Delete with all documents |
@@ -43,6 +44,26 @@ and the DELETE endpoints, still only inside its collections. Anything else retur
 without a collection use the default collection when the token may read it, `"*"` means all of its
 collections. `CITEWELL_API_TOKEN` stays unrestricted. Once any scoped token exists, the server rejects
 requests without a valid token even if `CITEWELL_API_TOKEN` is unset.
+
+## Citation export
+
+`POST /v1/cite` (and `citewell cite`) turns passages into citations for writing tools:
+
+```bash
+curl -s localhost:8000/v1/cite -H 'content-type: application/json' \
+  -d '{"chunk_ids": ["a1b2c3d4e5f6a7b8c9d0"], "format": "bibtex"}'
+```
+
+| `format` | Result |
+|---|---|
+| `bibtex` | `@misc` entries (`application/x-bibtex`) with `title`, `author`, `year`, `pages`, `note` (chunk id) and `file` |
+| `csl-json` | A CSL-JSON array (`type: "document"`, `author` as a literal, `issued`, `page`) for Zotero, Pandoc and others |
+| `md` | Markdown footnote definitions `[^1]: …` in the order given |
+
+The page is the **printed page label** when the PDF has one (the PDF page number is added to `note`),
+otherwise the PDF page; passages from unpaged formats cite their section. Author and year come from the
+file's metadata (see [metadata filters](#metadata-filters)) and are left out when unknown. Chunks outside a
+scoped token's collections return `403`.
 
 ## Answerability
 

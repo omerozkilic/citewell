@@ -9,7 +9,7 @@ from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
@@ -29,6 +29,7 @@ from citewell.auth import (
     reset_scope,
     set_scope,
 )
+from citewell.citations import CiteFormat, render
 from citewell.config import MAX_QUERY_CHARS
 from citewell.db import SchemaMismatchError
 from citewell.loaders import SUPPORTED_SUFFIXES
@@ -65,6 +66,12 @@ class VerifyBody(BaseModel):
     chunk_id: str | None = None
     source: str | None = None
     collections: list[str] | None = None
+
+
+class CiteBody(BaseModel):
+    chunk_ids: list[str] = Field(min_length=1, max_length=100)
+    format: CiteFormat = "bibtex"
+    quotes: bool = Field(default=False, description="Markdown only: no quotes are known for plain chunk ids.")
 
 
 class CollectionBody(BaseModel):
@@ -308,6 +315,22 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
         for row in rows:
             scope.require(row.collection)
         return rows
+
+    @api.post(
+        "/v1/cite",
+        tags=["chunks"],
+        response_class=PlainTextResponse,
+        responses={
+            200: {"content": {"application/x-bibtex": {}, "application/json": {}, "text/markdown": {}}}
+        },
+    )
+    def cite(body: CiteBody, cw: Svc) -> Response:
+        items = cw.store.cite_items(body.chunk_ids)
+        scope = current_scope()
+        for item in items:
+            scope.require(item.collection)
+        media = {"bibtex": "application/x-bibtex", "csl-json": "application/json", "md": "text/markdown"}
+        return Response(render(items, body.format), media_type=f"{media[body.format]}; charset=utf-8")
 
     @api.get("/v1/collections", response_model=list[Collection], tags=["collections"])
     def list_collections(cw: Svc) -> list[Collection]:

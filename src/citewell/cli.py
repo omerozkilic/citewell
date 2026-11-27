@@ -314,6 +314,63 @@ def search(
     console.print(f"[dim]{len(resp.hits)} results · mode={resp.mode}{rr} · {resp.took_ms:.0f} ms[/]")
 
 
+# ---------------------------------------------------------------------------- cite
+
+
+@app.command()
+def cite(
+    chunk_ids: Annotated[
+        list[str] | None, typer.Argument(help="Chunk ids to cite (from search results).")
+    ] = None,
+    query: Annotated[
+        str | None, typer.Option("--query", "-q", help="Search for this and cite the top results.")
+    ] = None,
+    k: Annotated[int, typer.Option("-k", "--top-k", help="Results to cite with --query.")] = 3,
+    collection: Annotated[
+        list[str] | None, typer.Option("--collection", "-c", help="Collection(s) for --query.")
+    ] = None,
+    fmt: Annotated[
+        Literal["bibtex", "csl-json", "md"], typer.Option("--format", "-f", help="Output format.")
+    ] = "bibtex",
+    quote: Annotated[
+        bool, typer.Option("--quote", help="Markdown: add the matching excerpt (needs --query).")
+    ] = False,
+    output: Annotated[Path | None, typer.Option("--output", "-o", help="Write to a file.")] = None,
+) -> None:
+    """Export citations (BibTeX, CSL-JSON or Markdown footnotes) for passages."""
+    from citewell.citations import render
+    from citewell.search import SearchRequest
+
+    if bool(chunk_ids) == bool(query):
+        raise _fail("give chunk ids or --query (not both)")
+    cw = _citewell()
+    try:
+        cw.check_schema()
+        quotes: dict[str, str] = {}
+        ids = list(chunk_ids or [])
+        if query:
+            resp = cw.search.search(SearchRequest(query=query, top_k=k, collections=collection))
+            ids = [h.chunk_id for h in resp.hits]
+            quotes = {h.chunk_id: h.quote for h in resp.hits}
+            if not ids:
+                raise _fail("no results to cite")
+        items = cw.store.cite_items(ids)
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        raise _fail(str(exc)) from exc
+    finally:
+        cw.close()
+    for item in items:
+        item.quote = quotes.get(item.chunk_id)
+    text = render(items, fmt, with_quotes=quote)
+    if output:
+        output.write_text(text, encoding="utf-8")
+        console.print(f"[green]✓[/] {len(items)} citation(s) written to {output}")
+    else:
+        sys.stdout.write(text)  # no wrapping: the output is meant to be piped or pasted
+
+
 # -------------------------------------------------------------------------- verify
 
 
