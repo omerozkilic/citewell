@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from citewell.config import Settings
 from citewell.embeddings import Embedder
 from citewell.fusion import reciprocal_rank_fusion
-from citewell.models import ChunkRecord, Collection, SearchHit, SearchResponse
+from citewell.models import ChunkRecord, Collection, SearchFilters, SearchHit, SearchResponse
 from citewell.rerank import Reranker
 from citewell.store import NotFoundError, Store
 from citewell.text import best_quote
@@ -28,6 +28,7 @@ class SearchRequest:
     collections: Sequence[str] | None = None
     rerank: bool | None = None
     source_prefix: str | None = None
+    filters: SearchFilters | None = None
 
 
 class SearchService:
@@ -94,7 +95,7 @@ class SearchService:
 
         if req.mode in ("vector", "hybrid"):
             qv = self.embedder.embed_query(query)
-            vec_hits = self.store.vector_search(qv, col_ids, pool, req.source_prefix)
+            vec_hits = self.store.vector_search(qv, col_ids, pool, req.source_prefix, filters=req.filters)
             rankings.append([h.chunk_id for h in vec_hits])
             for rank, h in enumerate(vec_hits, start=1):
                 per_ret.setdefault(h.chunk_id, {}).update({"vector": h.score, "vector_rank": rank})
@@ -107,7 +108,13 @@ class SearchService:
                 by_lang.setdefault(c.language, []).append(c.id)
             for lang, ids in by_lang.items():
                 kw_hits = self.store.keyword_search(
-                    query, lang, ids, pool, req.source_prefix, folded=self.settings.fold_diacritics
+                    query,
+                    lang,
+                    ids,
+                    pool,
+                    req.source_prefix,
+                    folded=self.settings.fold_diacritics,
+                    filters=req.filters,
                 )
                 rankings.append([h.chunk_id for h in kw_hits])
                 for rank, h in enumerate(kw_hits, start=1):

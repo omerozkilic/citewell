@@ -14,6 +14,7 @@ from __future__ import annotations
 import csv
 import email
 import email.policy
+import email.utils
 import io
 import posixpath
 import re
@@ -31,6 +32,7 @@ from citewell.loaders import (
     _decode,
     _HTMLText,
     check_zip,
+    iso_date,
 )
 from citewell.models import Page
 from citewell.text import clean_text
@@ -88,15 +90,23 @@ def _relationships(zf: zipfile.ZipFile, rels_path: str, base_dir: str) -> dict[s
 
 
 def _core_title(zf: zipfile.ZipFile) -> dict[str, str]:
+    """Title, author and creation date from ``docProps/core.xml`` (all optional)."""
     raw = _read(zf, "docProps/core.xml")
     if raw is None:
         return {}
     try:
-        node = _xml(raw, "docProps/core.xml").find("{*}title")
+        root = _xml(raw, "docProps/core.xml")
     except UnsupportedFormatError:
         return {}
-    title = (node.text or "").strip() if node is not None else ""
-    return {"title": title} if title else {}
+    meta: dict[str, str] = {}
+    for key, tag in (("title", "title"), ("author", "creator")):
+        node = root.find("{*}" + tag)
+        if node is not None and (node.text or "").strip():
+            meta[key] = (node.text or "").strip()
+    created = root.find("{*}created")
+    if created is not None and (day := iso_date(created.text or "")):
+        meta["date"] = day
+    return meta
 
 
 def _short(line: str) -> str | None:
@@ -309,4 +319,13 @@ def load_eml(data: bytes, limits: LoadLimits) -> Loaded:
             content = "".join(parser.parts)
         body = content
     text = clean_text("\n".join(header_lines) + "\n\n" + body)
-    return [Page(number=None, text=text, section=subject or None)], ({"title": subject} if subject else {})
+    meta = {"title": subject} if subject else {}
+    if sender := str(msg.get("from", "") or "").strip():
+        meta["author"] = sender
+    try:
+        sent = email.utils.parsedate_to_datetime(str(msg.get("date", "") or ""))
+    except (TypeError, ValueError):
+        sent = None
+    if sent and (day := iso_date(sent)):
+        meta["date"] = day
+    return [Page(number=None, text=text, section=subject or None)], meta

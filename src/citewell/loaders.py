@@ -13,6 +13,7 @@ import logging
 import re
 import zipfile
 from collections.abc import Callable, Iterable, Iterator
+from datetime import date, datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, ClassVar, NamedTuple
@@ -192,7 +193,29 @@ def load_pdf(
             meta["title"] = str(reader.metadata.title)
         if reader.metadata.author:
             meta["author"] = str(reader.metadata.author)
+        try:
+            created = iso_date(reader.metadata.creation_date)
+        except Exception:  # malformed /CreationDate: the date is optional
+            created = None
+        if created:
+            meta["date"] = created
     return pages, meta
+
+
+def iso_date(value: object) -> str | None:
+    """``YYYY-MM-DD`` from a datetime, a date or text that starts with one (ISO or PDF ``D:2024...``)."""
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, str):
+        m = re.match(r"^(?:D:)?(\d{4})-?(\d{2})-?(\d{2})", value.strip())
+        if m:
+            try:
+                return date(int(m[1]), int(m[2]), int(m[3])).isoformat()
+            except ValueError:
+                return None
+    return None
 
 
 def _page_labels(reader: Any) -> list[str] | None:
@@ -338,7 +361,12 @@ def load_docx(data: bytes, limits: LoadLimits = DEFAULT_LIMITS) -> tuple[list[Pa
         buf.append(para.text)
     if buf:
         sections.append(Page(number=None, text=clean_text("\n".join(buf)), section=heading))
-    meta = {"title": document.core_properties.title} if document.core_properties.title else {}
+    props = document.core_properties
+    meta: dict[str, str] = {"title": props.title} if props.title else {}
+    if props.author:
+        meta["author"] = props.author
+    if created := iso_date(props.created):
+        meta["date"] = created
     return [s for s in sections if s.text], meta
 
 
