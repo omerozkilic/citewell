@@ -128,6 +128,12 @@ def ingest(
         ),
     ] = False,
     yes: Annotated[bool, typer.Option("--yes", "-y", help="Do not ask before pruning.")] = False,
+    tag: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--tag", "-t", help="Tag to attach to these documents (repeatable); filter with search --tag."
+        ),
+    ] = None,
 ) -> None:
     """Load, chunk, embed and store documents. Unchanged files are skipped by content hash."""
     from citewell.models import IngestResult
@@ -157,7 +163,7 @@ def ingest(
         with console.status("loading embedding model…"):
             _ = cw.embedder
         cw.ingest.ingest_paths(
-            paths, collection, language, force=force, recursive=recursive, on_result=report
+            paths, collection, language, force=force, recursive=recursive, on_result=report, tags=tag or []
         )
         if prune:
             removed = _prune(cw, collection or cw.settings.default_collection, seen, yes)
@@ -257,15 +263,30 @@ def search(
     rerank: Annotated[bool | None, typer.Option("--rerank/--no-rerank")] = None,
     as_json: Annotated[bool, typer.Option("--json", help="Print the raw JSON response.")] = False,
     full: Annotated[bool, typer.Option("--full", help="Show full chunk text instead of the quote.")] = False,
+    file_type: Annotated[
+        list[str] | None, typer.Option("--type", "-T", help="Only this file type, e.g. pdf (repeatable).")
+    ] = None,
+    author: Annotated[
+        str | None, typer.Option(help="Only documents whose author contains this text.")
+    ] = None,
+    after: Annotated[str | None, typer.Option(help="Only documents dated on/after YYYY-MM-DD.")] = None,
+    before: Annotated[str | None, typer.Option(help="Only documents dated on/before YYYY-MM-DD.")] = None,
+    tag: Annotated[list[str] | None, typer.Option("--tag", "-t", help="Required tag (repeatable).")] = None,
 ) -> None:
     """Search ingested documents and print cited passages."""
+    from citewell.models import SearchFilters
     from citewell.search import SearchRequest
 
     cw = _citewell()
     try:
+        filters = SearchFilters(
+            file_types=file_type or [], author=author, date_from=after, date_to=before, tags=tag or []
+        )
         cw.check_schema()
         resp = cw.search.search(
-            SearchRequest(query=query, top_k=k, mode=mode, collections=collection, rerank=rerank)
+            SearchRequest(
+                query=query, top_k=k, mode=mode, collections=collection, rerank=rerank, filters=filters
+            )
         )
     except Exception as exc:
         raise _fail(str(exc)) from exc

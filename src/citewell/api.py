@@ -5,6 +5,7 @@ import hmac
 import logging
 import math
 from collections.abc import AsyncIterator
+from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile, status
@@ -38,7 +39,9 @@ from citewell.models import (
     DocumentInfo,
     IngestResult,
     QuoteCheck,
+    SearchFilters,
     SearchResponse,
+    normalise_tags,
 )
 from citewell.ratelimit import RateLimiter
 from citewell.search import SearchRequest
@@ -54,6 +57,7 @@ class SearchBody(BaseModel):
     collections: list[str] | None = None
     rerank: bool | None = None
     source_prefix: str | None = None
+    filters: SearchFilters | None = None
 
 
 class VerifyBody(BaseModel):
@@ -252,6 +256,7 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
                 collections=current_scope().resolve(body.collections, settings.default_collection),
                 rerank=body.rerank,
                 source_prefix=body.source_prefix,
+                filters=body.filters,
             )
         )
 
@@ -263,6 +268,11 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
         mode: Literal["hybrid", "vector", "keyword"] = "hybrid",
         collection: Annotated[list[str] | None, Query()] = None,
         rerank: bool | None = None,
+        type: Annotated[list[str] | None, Query(description="File extension, repeatable.")] = None,
+        author: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        tag: Annotated[list[str] | None, Query(description="Required tag, repeatable.")] = None,
     ) -> SearchResponse:
         return cw.search.search(
             SearchRequest(
@@ -271,6 +281,9 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
                 mode=mode,
                 collections=current_scope().resolve(collection, settings.default_collection),
                 rerank=rerank,
+                filters=SearchFilters(
+                    file_types=type or [], author=author, date_from=date_from, date_to=date_to, tags=tag or []
+                ),
             )
         )
 
@@ -340,6 +353,7 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
         collection: Annotated[str | None, Form()] = None,
         language: Annotated[Literal["turkish", "english", "simple"] | None, Form()] = None,
         force: Annotated[bool, Form()] = False,
+        tags: Annotated[list[str] | None, Form(description="Tag to attach, repeatable.")] = None,
     ) -> IngestResult:
         scope = current_scope()
         scope.require_write()
@@ -351,7 +365,9 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
         data = await file.read(limit + 1)
         if len(data) > limit:
             raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "file too large")
-        return await run_in_threadpool(cw.ingest.ingest_bytes, data, name, collection, language, force)
+        return await run_in_threadpool(
+            cw.ingest.ingest_bytes, data, name, collection, language, force, normalise_tags(tags or [])
+        )
 
     if mcp_app is not None:
         # Mounted last so that it only receives /mcp (all other routes match first).

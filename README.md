@@ -185,7 +185,7 @@ or stdio with the PyPI install: `{ "mcpServers": { "citewell": { "command": "cit
 
 | Kind | Name | Purpose |
 |---|---|---|
-| tool | `search_documents(query, top_k, collection, mode, rerank, source_prefix)` | Cited passages (`ref`, `citation`, `source`, `page`, `chunk_id`, `quote`, `text`, `score`) |
+| tool | `search_documents(query, top_k, collection, mode, rerank, source_prefix, file_type, author, date_from, date_to, tags)` | Cited passages (`ref`, `citation`, `source`, `page`, `chunk_id`, `quote`, `text`, `score`) |
 | tool | `get_chunk(chunk_id, context)` | A chunk plus neighbouring chunks, to read around a quote |
 | tool | `verify_quote(quote, chunk_id, source, collection)` | Checks that a quotation really occurs in the source; returns the exact wording and page, or the closest passage if it was paraphrased |
 | tool | `list_collections()` / `list_documents(collection)` | What is indexed |
@@ -198,6 +198,7 @@ or stdio with the PyPI install: `{ "mcpServers": { "citewell": { "command": "cit
 citewell init                         create extension + schema (idempotent)
 citewell ingest PATH... [-c COL] [-l turkish|english|simple] [--force] [--prune [-y]]
 citewell search "query" [-k 5] [-m hybrid|vector|keyword] [-c COL|*] [--rerank] [--json]
+                       [-T pdf] [--author NAME] [--after DATE] [--before DATE] [-t TAG]
 citewell verify "quote" [--chunk ID] [--source FILE] [-c COL]   exit code 4 if not found
 citewell serve [--init] [--host] [--port]      REST API + MCP at /mcp
 citewell mcp [--transport stdio|http]          MCP server only

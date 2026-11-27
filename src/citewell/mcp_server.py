@@ -5,6 +5,7 @@ cannot ingest or delete. Retrieved text is untrusted third-party content and
 must never be able to trigger write actions (see SECURITY.md).
 """
 
+from datetime import date
 from typing import Annotated, Literal
 
 import anyio.to_thread
@@ -28,6 +29,7 @@ from citewell.models import (
     Collection,
     DocumentInfo,
     QuoteCheck,
+    SearchFilters,
     SearchHit,
     citation_label,
 )
@@ -156,6 +158,13 @@ def build_server(app: Citewell) -> MCPServer:
         source_prefix: Annotated[
             str | None, Field(description="Only search documents whose path starts with this prefix.")
         ] = None,
+        file_type: Annotated[
+            list[str] | None, Field(description="Only these file types, e.g. ['pdf', 'docx'].")
+        ] = None,
+        author: Annotated[str | None, Field(description="Part of the author's name.")] = None,
+        date_from: Annotated[date | None, Field(description="Documents dated on/after (YYYY-MM-DD).")] = None,
+        date_to: Annotated[date | None, Field(description="Documents dated on/before (YYYY-MM-DD).")] = None,
+        tags: Annotated[list[str] | None, Field(description="Tags the document must all have.")] = None,
     ) -> SearchResult:
         """Search the user's documents and return cited passages (file, page, chunk id, quote)."""
         resp = app.search.search(
@@ -168,6 +177,13 @@ def build_server(app: Citewell) -> MCPServer:
                 ),
                 rerank=rerank,
                 source_prefix=source_prefix,
+                filters=SearchFilters(
+                    file_types=file_type or [],
+                    author=author,
+                    date_from=date_from,
+                    date_to=date_to,
+                    tags=tags or [],
+                ),
             )
         )
         return SearchResult(

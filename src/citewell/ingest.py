@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 
 from citewell.chunking import chunk_pages
 from citewell.config import Settings
 from citewell.embeddings import Embedder
 from citewell.loaders import LoadLimits, UnsupportedFormatError, iter_files, load_bytes
-from citewell.models import ChunkDraft, Collection, IngestResult, LoadedDocument
+from citewell.models import ChunkDraft, Collection, IngestResult, LoadedDocument, normalise_tags
 from citewell.ocr import OcrOptions
 from citewell.store import Store
 
@@ -41,7 +41,11 @@ class IngestService:
         )
 
     def ingest_document(
-        self, doc: LoadedDocument, collection: Collection, force: bool = False
+        self,
+        doc: LoadedDocument,
+        collection: Collection,
+        force: bool = False,
+        tags: Sequence[str] = (),
     ) -> IngestResult:
         if not force and self.store.document_sha(collection.id, doc.source) == doc.sha256:
             return IngestResult(source=doc.source, status="unchanged", pages=len(doc.pages))
@@ -60,7 +64,7 @@ class IngestService:
                 message=self._no_text_message("no extractable text"),
             )
         vectors = self.embedder.embed_documents([embedding_text(doc, c) for c in chunks])
-        doc_id = self.store.replace_document(collection, doc, chunks, vectors)
+        doc_id = self.store.replace_document(collection, doc, chunks, vectors, normalise_tags(list(tags)))
         pages = len({c.page for c in chunks if c.page is not None})
         warning = None
         if missing:
@@ -111,13 +115,14 @@ class IngestService:
         collection: str | None = None,
         language: str | None = None,
         force: bool = False,
+        tags: Sequence[str] = (),
     ) -> IngestResult:
         col = self.collection(collection, language)
         try:
             doc = self._load(data, source)
         except UnsupportedFormatError as exc:
             return IngestResult(source=source, status="error", message=str(exc))
-        return self.ingest_document(doc, col, force=force)
+        return self.ingest_document(doc, col, force=force, tags=tags)
 
     def ingest_paths(
         self,
@@ -127,13 +132,14 @@ class IngestService:
         force: bool = False,
         recursive: bool = True,
         on_result: ProgressFn | None = None,
+        tags: Sequence[str] = (),
     ) -> list[IngestResult]:
         col = self.collection(collection, language)
         results: list[IngestResult] = []
         for path, source in iter_files(paths, recursive=recursive):
             try:
                 doc = self._load(path.read_bytes(), source)
-                res = self.ingest_document(doc, col, force=force)
+                res = self.ingest_document(doc, col, force=force, tags=tags)
             except UnsupportedFormatError as exc:  # expected: unsupported, or over a safety limit
                 log.warning("not ingesting %s: %s", path, exc)  # no traceback: nothing crashed
                 res = IngestResult(source=source, status="error", message=f"{type(exc).__name__}: {exc}")

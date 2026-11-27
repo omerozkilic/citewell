@@ -45,7 +45,7 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
 - [x] Per-token rate limiting (`CITEWELL_RATE_LIMIT_PER_MINUTE`, follow-up to #24)
 - [x] Optional audit log (`CITEWELL_AUDIT_LOG`, follow-up to #24)
 - [ ] Progress notifications for long MCP operations ([#25](https://github.com/omerozkilic/citewell/issues/25))
-- [ ] Metadata filters in search ([#39](https://github.com/omerozkilic/citewell/issues/39))
+- [x] Metadata filters in search ([#39](https://github.com/omerozkilic/citewell/issues/39))
 - [ ] Export citations (BibTeX, CSL-JSON, Markdown footnotes) ([#40](https://github.com/omerozkilic/citewell/issues/40))
 - [ ] Answerability signal ("not in the documents") ([#41](https://github.com/omerozkilic/citewell/issues/41))
 - [ ] Minimal web UI at `/ui` ([#42](https://github.com/omerozkilic/citewell/issues/42))

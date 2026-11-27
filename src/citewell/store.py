@@ -18,7 +18,15 @@ from psycopg_pool import ConnectionPool
 from citewell import db
 from citewell.auth import Scope
 from citewell.embeddings import Vector
-from citewell.models import ChunkDraft, ChunkRecord, Collection, DocumentInfo, LoadedDocument, TokenInfo
+from citewell.models import (
+    ChunkDraft,
+    ChunkRecord,
+    Collection,
+    DocumentInfo,
+    LoadedDocument,
+    SearchFilters,
+    TokenInfo,
+)
 from citewell.text import fold, tr_lower
 
 COLLECTION_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
@@ -162,6 +170,7 @@ class Store:
         doc: LoadedDocument,
         chunks: Sequence[ChunkDraft],
         embeddings: Vector,
+        tags: Sequence[str] = (),
     ) -> int:
         """Atomically replace a document and all of its chunks."""
         if len(chunks) != len(embeddings):
@@ -174,8 +183,9 @@ class Store:
             )
             row = conn.execute(
                 """
-                INSERT INTO documents (collection_id, source, title, mime, sha256, page_count, metadata)
-                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+                INSERT INTO documents (collection_id, source, title, mime, sha256, page_count, metadata,
+                                       author, doc_date, tags)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
                 """,
                 (
                     collection.id,
@@ -185,6 +195,9 @@ class Store:
                     doc.sha256,
                     doc.metadata.get("total_pages") or (max(page_numbers) if page_numbers else None),
                     Jsonb(doc.metadata),
+                    doc.metadata.get("author"),
+                    doc.metadata.get("date"),
+                    list(tags),
                 ),
             ).fetchone()
             assert row is not None
@@ -225,7 +238,8 @@ class Store:
             SELECT d.id, col.name AS collection, d.source, d.title, d.mime, d.sha256, d.page_count,
                    (d.metadata->>'pages_without_text')::int AS pages_without_text,
                    d.metadata->'ocr_pages' AS ocr_pages,
-                   d.ingested_at, (SELECT count(*) FROM chunks c WHERE c.document_id = d.id) AS chunk_count
+                   d.ingested_at, d.author, d.doc_date, d.tags,
+                   (SELECT count(*) FROM chunks c WHERE c.document_id = d.id) AS chunk_count
             FROM documents d JOIN collections col ON col.id = d.collection_id
         """
         params: tuple[Any, ...] = ()
@@ -307,6 +321,7 @@ class Store:
         collection_ids: Sequence[int],
         limit: int,
         source_prefix: str | None = None,
+        filters: SearchFilters | None = None,
     ) -> list[RetrievedId]:
         """Cosine similarity over the HNSW index. Score is ``1 - cosine distance``."""
         where = ["c.collection_id = ANY(%(cols)s)"]
@@ -315,9 +330,7 @@ class Store:
             "cols": list(collection_ids),
             "lim": limit,
         }
-        if source_prefix:
-            where.append("d.source LIKE %(src)s")
-            params["src"] = _like_prefix(source_prefix)
+        _document_filters(where, params, source_prefix, filters)
         sql = f"""
             SELECT c.id, 1 - (c.embedding <=> %(q)s) AS score
             FROM chunks c JOIN documents d ON d.id = c.document_id
@@ -353,6 +366,7 @@ class Store:
         limit: int,
         source_prefix: str | None = None,
         folded: bool = False,
+        filters: SearchFilters | None = None,
     ) -> list[RetrievedId]:
         """Full-text search with OR semantics over stemmed lexemes, ranked by ``ts_rank_cd``.
 
@@ -370,9 +384,7 @@ class Store:
             "cols": list(collection_ids),
             "lim": limit,
         }
-        if source_prefix:
-            where.append("d.source LIKE %(src)s")
-            params["src"] = _like_prefix(source_prefix)
+        _document_filters(where, params, source_prefix, filters)
         sql = f"""
             WITH q AS (SELECT %(tsq)s::tsquery AS query)
             SELECT c.id, ts_rank_cd({column}, q.query, 1) AS score
@@ -458,5 +470,37 @@ class Store:
         return bool(row and row[0])
 
 
+def _like_escape(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _like_prefix(prefix: str) -> str:
-    return prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    return _like_escape(prefix) + "%"
+
+
+def _document_filters(
+    where: list[str], params: dict[str, Any], source_prefix: str | None, filters: SearchFilters | None
+) -> None:
+    """Add the document-level conditions of a search (all pushed into SQL, so top-k stays full)."""
+    if source_prefix:
+        where.append("d.source LIKE %(src)s")
+        params["src"] = _like_prefix(source_prefix)
+    if filters is None:
+        return
+    if filters.file_types:
+        names = [f"ft{i}" for i in range(len(filters.file_types))]
+        where.append("(" + " OR ".join(f"lower(d.source) LIKE %({n})s" for n in names) + ")")
+        params.update({n: "%." + ext for n, ext in zip(names, filters.file_types, strict=True)})
+    if filters.author:
+        # Same Turkish-aware lower-casing as text.tr_lower, so "İlker" and "ilker" match each other.
+        where.append("lower(translate(d.author, 'Iİ', 'ıi')) LIKE %(author)s")
+        params["author"] = "%" + _like_escape(tr_lower(filters.author.strip())) + "%"
+    if filters.date_from:
+        where.append("d.doc_date >= %(date_from)s")
+        params["date_from"] = filters.date_from
+    if filters.date_to:
+        where.append("d.doc_date <= %(date_to)s")
+        params["date_to"] = filters.date_to
+    if filters.tags:
+        where.append("d.tags @> %(tags)s")
+        params["tags"] = list(filters.tags)

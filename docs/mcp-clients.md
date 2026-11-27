@@ -101,7 +101,7 @@ others return an error. Revoke with `citewell tokens revoke team-a`.
 
 | Kind | Name | Notes |
 |---|---|---|
-| tool | `search_documents` | `query`, `top_k` (1–50), `collection` (`*` = all), `mode` (`hybrid`/`vector`/`keyword`), `rerank`, `source_prefix` |
+| tool | `search_documents` | `query`, `top_k` (1–50), `collection` (`*` = all), `mode` (`hybrid`/`vector`/`keyword`), `rerank`, `source_prefix`, `file_type` (list), `author`, `date_from`, `date_to` (`YYYY-MM-DD`), `tags` (list) — see [metadata filters](rest-api.md#metadata-filters) |
 | tool | `get_chunk` | `chunk_id`, `context` (0–5 neighbouring chunks) |
 | tool | `verify_quote` | `quote`, optional `chunk_id` / `source` / `collection`; returns `verified`, `match` (`exact`, `normalized`, `ellipsis`, `fuzzy`, `not_found`), the exact `source_text` and its citation |
 | tool | `list_collections` | name, language, document and chunk counts |

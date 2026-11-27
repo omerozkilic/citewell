@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+import re
+from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from citewell.text import tr_lower
 
 
 class Page(BaseModel):
@@ -47,6 +50,43 @@ class Collection(BaseModel):
     created_at: datetime | None = None
 
 
+_FILE_TYPE_RE = re.compile(r"^[a-z0-9]{1,10}$")
+
+
+class SearchFilters(BaseModel):
+    """Narrow a search to documents by file type, author, date or tags (all conditions must hold)."""
+
+    file_types: list[str] = Field(
+        default_factory=list, description="File extensions, e.g. ['pdf', 'docx']; any of them."
+    )
+    author: str | None = Field(default=None, description="Case-insensitive part of the author name.")
+    date_from: date | None = Field(default=None, description="Documents dated on or after this day.")
+    date_to: date | None = Field(default=None, description="Documents dated on or before this day.")
+    tags: list[str] = Field(default_factory=list, description="Tags the document must all carry.")
+
+    @field_validator("file_types")
+    @classmethod
+    def _normalise_types(cls, values: list[str]) -> list[str]:
+        out = [v.strip().lstrip(".").lower() for v in values if v.strip()]
+        for v in out:
+            if not _FILE_TYPE_RE.match(v):
+                raise ValueError(f"invalid file type: {v!r}")
+        return sorted(set(out))
+
+    @field_validator("tags")
+    @classmethod
+    def _normalise_tags(cls, values: list[str]) -> list[str]:
+        return normalise_tags(values)
+
+    def is_empty(self) -> bool:
+        return not (self.file_types or self.author or self.date_from or self.date_to or self.tags)
+
+
+def normalise_tags(values: list[str]) -> list[str]:
+    """Trimmed, lower-cased (Turkish-aware), de-duplicated tags."""
+    return sorted({tr_lower(v.strip(), "turkish") for v in values if v.strip()})
+
+
 class TokenInfo(BaseModel):
     id: int
     name: str
@@ -72,6 +112,9 @@ class DocumentInfo(BaseModel):
     )
     chunk_count: int = 0
     ingested_at: datetime | None = None
+    author: str | None = None
+    doc_date: date | None = Field(default=None, description="Document date from the file's own metadata.")
+    tags: list[str] = Field(default_factory=list)
 
 
 class Citation(BaseModel):
