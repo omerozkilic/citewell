@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.4.0](https://github.com/omerozkilic/citewell/compare/v0.3.0...v0.4.0) (2026-11-27)
+
+
+### Features
+
+* **api:** optional audit log of HTTP requests (CITEWELL_AUDIT_LOG) ([#79](https://github.com/omerozkilic/citewell/issues/79)) ([1fbcda6](https://github.com/omerozkilic/citewell/commit/1fbcda6b35e0a9bb5301ecb0f6470bcfc8260fef))
+* **api:** optional Prometheus /metrics endpoint ([#43](https://github.com/omerozkilic/citewell/issues/43)) ([#83](https://github.com/omerozkilic/citewell/issues/83)) ([06ba2f3](https://github.com/omerozkilic/citewell/commit/06ba2f39f6839f4f8e30e8b08e919f4b8f41b62a))
+* **api:** per-token rate limiting (CITEWELL_RATE_LIMIT_PER_MINUTE) ([#78](https://github.com/omerozkilic/citewell/issues/78)) ([069f609](https://github.com/omerozkilic/citewell/commit/069f6090d311f7a746ead2d2a15afdcd65fdf19e))
+* **auth:** per-collection API tokens with read/write scope ([#24](https://github.com/omerozkilic/citewell/issues/24)) ([#77](https://github.com/omerozkilic/citewell/issues/77)) ([2e9a560](https://github.com/omerozkilic/citewell/commit/2e9a56074e6ecfe536fb1ba18e17e36c8f8953af))
+* **cite:** export citations as BibTeX, CSL-JSON or Markdown footnotes ([#40](https://github.com/omerozkilic/citewell/issues/40)) ([#82](https://github.com/omerozkilic/citewell/issues/82)) ([9c3e649](https://github.com/omerozkilic/citewell/commit/9c3e6497f58e7da7395172a9d406418058bf9e9a))
+* **mcp:** progress notifications for slow search stages ([#25](https://github.com/omerozkilic/citewell/issues/25)) ([#84](https://github.com/omerozkilic/citewell/issues/84)) ([3a30224](https://github.com/omerozkilic/citewell/commit/3a30224220831eecca70aeaf34af5c442c7a039c))
+* **search:** answerability signal for 'not in the documents' ([#41](https://github.com/omerozkilic/citewell/issues/41)) ([#81](https://github.com/omerozkilic/citewell/issues/81)) ([bcaefdc](https://github.com/omerozkilic/citewell/commit/bcaefdc596d0b3d4763cec2454ab38628cd17f42))
+* **search:** metadata filters (file type, author, date, tags) ([#39](https://github.com/omerozkilic/citewell/issues/39)) ([#80](https://github.com/omerozkilic/citewell/issues/80)) ([e178aae](https://github.com/omerozkilic/citewell/commit/e178aae32e5edc9b570f901431b0b0fedf890395))
+* **ui:** minimal read-only search page at /ui ([#42](https://github.com/omerozkilic/citewell/issues/42)) ([#85](https://github.com/omerozkilic/citewell/issues/85)) ([03a8336](https://github.com/omerozkilic/citewell/commit/03a83364eb25e1d9895b8a1f1e6b843bd4565328))
+
+
+### Documentation
+
+* mark 0.3 shipped and 0.4 as next in the roadmap ([#75](https://github.com/omerozkilic/citewell/issues/75)) ([0cf555c](https://github.com/omerozkilic/citewell/commit/0cf555c4d16c4111c7473ac096c0326b30b69179))
+
 ## [0.3.0](https://github.com/omerozkilic/citewell/compare/v0.2.0...v0.3.0) (2026-11-13)
 
 
