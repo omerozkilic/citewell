@@ -45,6 +45,31 @@ without a collection use the default collection when the token may read it, `"*"
 collections. `CITEWELL_API_TOKEN` stays unrestricted. Once any scoped token exists, the server rejects
 requests without a valid token even if `CITEWELL_API_TOKEN` is unset.
 
+## Prometheus metrics
+
+Set `CITEWELL_METRICS=true` to serve `GET /metrics` (Prometheus text format; no extra dependency). It is
+off by default and, like every endpoint except `/health`, needs the bearer token when `CITEWELL_API_TOKEN`
+or scoped tokens are in use. Scoped tokens get `403` because the output lists every collection.
+
+| Metric | Type | Labels |
+|---|---|---|
+| `citewell_http_requests_total` | counter | `method`, `route` (template such as `/v1/chunks/{chunk_id}`, `/mcp`, or `other`), `status` |
+| `citewell_http_request_duration_seconds` | histogram | `route` |
+| `citewell_searches_total` | counter | `mode`, `outcome` (`ok`, `weak` = flagged not answerable, `empty`, `error`) |
+| `citewell_search_duration_seconds` | histogram | `mode` |
+| `citewell_documents`, `citewell_chunks` | gauge | `collection` (sampled on each scrape) |
+| `citewell_build_info` | gauge | `version` |
+
+Counters live in memory per server process and reset on restart. Requests rejected before routing (401)
+are counted under `route="other"`. Scrape config:
+
+```yaml
+scrape_configs:
+  - job_name: citewell
+    authorization: {credentials: "<token>"}
+    static_configs: [{targets: ["citewell:8000"]}]
+```
+
 ## Citation export
 
 `POST /v1/cite` (and `citewell cite`) turns passages into citations for writing tools:

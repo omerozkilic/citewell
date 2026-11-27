@@ -11,6 +11,7 @@ from citewell.answerability import confidence
 from citewell.config import Settings
 from citewell.embeddings import Embedder
 from citewell.fusion import reciprocal_rank_fusion
+from citewell.metrics import Metrics
 from citewell.models import ChunkRecord, Collection, SearchFilters, SearchHit, SearchResponse
 from citewell.rerank import Reranker
 from citewell.store import NotFoundError, Store
@@ -66,7 +67,30 @@ class SearchService:
             raise NotFoundError(f"unknown collection(s): {', '.join(missing)}")
         return [available[n] for n in names]
 
+    metrics: Metrics | None = None
+
     def search(self, req: SearchRequest) -> SearchResponse:
+        t0 = time.perf_counter()
+        mode = req.mode if req.mode in MODES else "invalid"
+        try:
+            resp = self._search(req)
+        except Exception:
+            self._record(mode, t0, "error")
+            raise
+        self._record(mode, t0, "ok" if resp.answerable else "weak" if resp.hits else "empty")
+        return resp
+
+    def _record(self, mode: str, t0: float, outcome: str) -> None:
+        if self.metrics is None:
+            return
+        self.metrics.counter(
+            "citewell_searches_total", "Searches by mode and outcome.", mode=mode, outcome=outcome
+        )
+        self.metrics.observe(
+            "citewell_search_duration_seconds", "End-to-end search time.", time.perf_counter() - t0, mode=mode
+        )
+
+    def _search(self, req: SearchRequest) -> SearchResponse:
         query = req.query.strip()
         if not query:
             raise ValueError("query must not be empty")

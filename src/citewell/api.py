@@ -4,6 +4,7 @@ import contextlib
 import hmac
 import logging
 import math
+import time
 from collections.abc import AsyncIterator
 from datetime import date
 from typing import Annotated, Literal
@@ -34,6 +35,7 @@ from citewell.config import MAX_QUERY_CHARS
 from citewell.db import SchemaMismatchError
 from citewell.loaders import SUPPORTED_SUFFIXES
 from citewell.mcp_server import build_server
+from citewell.metrics import Metrics
 from citewell.models import (
     ChunkRecord,
     Collection,
@@ -173,6 +175,47 @@ class BearerAuthMiddleware:
         return caller
 
 
+class MetricsMiddleware:
+    """Counts HTTP requests and their duration, labelled by route template (never the raw path)."""
+
+    def __init__(self, app: ASGIApp, metrics: Metrics):
+        self.app = app
+        self.metrics = metrics
+
+    async def __call__(self, scope: Scope_, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        t0 = time.perf_counter()
+        status_code = 500
+
+        async def send_status(message: Message) -> None:
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message["status"]
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_status)
+        finally:
+            route = getattr(scope.get("route"), "path", None)
+            if route in (None, "/"):  # unmatched, or the mounted MCP app
+                route = "/mcp" if scope["path"] == "/mcp" else "other"
+            self.metrics.counter(
+                "citewell_http_requests_total",
+                "HTTP requests.",
+                method=scope["method"],
+                route=route,
+                status=str(status_code),
+            )
+            self.metrics.observe(
+                "citewell_http_request_duration_seconds",
+                "HTTP request duration.",
+                time.perf_counter() - t0,
+                route=route,
+            )
+
+
 def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> FastAPI:
     cw = citewell or Citewell()
     settings = cw.settings
@@ -252,6 +295,21 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
             database=db_status,
             embedding_model=cw.embedding_model_id,
         )
+
+    if settings.metrics:
+
+        @api.get("/metrics", include_in_schema=False, response_class=PlainTextResponse)
+        def metrics_endpoint(cw: Svc) -> Response:
+            if current_scope().collections is not None:  # names and sizes of every collection
+                raise ForbiddenError("metrics need an unrestricted token")
+            gauges: list[tuple[str, str, tuple[tuple[str, str], ...], float]] = [
+                ("citewell_build_info", "Version of the running server.", (("version", __version__),), 1.0)
+            ]
+            for c in cw.store.list_collections():
+                labels = (("collection", c.name),)
+                gauges.append(("citewell_documents", "Documents per collection.", labels, c.document_count))
+                gauges.append(("citewell_chunks", "Chunks per collection.", labels, c.chunk_count))
+            return Response(cw.metrics.render(gauges), media_type="text/plain; version=0.0.4; charset=utf-8")
 
     @api.post("/v1/search", response_model=SearchResponse, tags=["search"])
     def search(body: SearchBody, cw: Svc) -> SearchResponse:
@@ -401,5 +459,7 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
         cw=cw,
         token=settings.api_token.get_secret_value() if settings.api_token is not None else None,
     )
+    if settings.metrics:
+        api.add_middleware(MetricsMiddleware, metrics=cw.metrics)  # added last = outermost: sees 401 and 429
 
     return api
