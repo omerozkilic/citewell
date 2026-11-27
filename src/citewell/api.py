@@ -7,6 +7,7 @@ import math
 import time
 from collections.abc import AsyncIterator
 from datetime import date
+from importlib import resources
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile, status
@@ -175,6 +176,29 @@ class BearerAuthMiddleware:
         return caller
 
 
+UI_ASSETS = {
+    "/ui/": ("index.html", "text/html"),
+    "/ui/app.js": ("app.js", "text/javascript"),
+    "/ui/style.css": ("style.css", "text/css"),
+}
+UI_PATHS = ("/ui", *UI_ASSETS)
+UI_HEADERS = {
+    # Scripts and styles only from this server, no inline code, nothing embedded elsewhere.
+    "Content-Security-Policy": (
+        "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; "
+        "img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    ),
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Cache-Control": "no-cache",
+}
+
+
+def _ui_response(name: str, media_type: str) -> Response:
+    data = resources.files("citewell").joinpath("ui", name).read_bytes()
+    return Response(data, media_type=f"{media_type}; charset=utf-8", headers=UI_HEADERS)
+
+
 class MetricsMiddleware:
     """Counts HTTP requests and their duration, labelled by route template (never the raw path)."""
 
@@ -280,6 +304,16 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
     @api.exception_handler(ValueError)
     async def _bad_request(_: Request, exc: ValueError) -> JSONResponse:
         return JSONResponse({"detail": str(exc)}, status_code=400)
+
+    if settings.ui:
+        # Static files only: they hold no data, so a browser can load them before it has a token.
+        # Everything the page does goes through the API, which still checks the token.
+        for path, (name, media_type) in {"/ui": ("index.html", "text/html"), **UI_ASSETS}.items():
+
+            def ui_file(name: str = name, media_type: str = media_type) -> Response:
+                return _ui_response(name, media_type)
+
+            api.add_api_route(path, ui_file, methods=["GET", "HEAD"], include_in_schema=False)
 
     @api.get("/health", response_model=Health, tags=["meta"])
     def health(cw: Svc) -> Health:
@@ -458,6 +492,7 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
         BearerAuthMiddleware,
         cw=cw,
         token=settings.api_token.get_secret_value() if settings.api_token is not None else None,
+        exempt=("/health", *UI_PATHS) if settings.ui else ("/health",),
     )
     if settings.metrics:
         api.add_middleware(MetricsMiddleware, metrics=cw.metrics)  # added last = outermost: sees 401 and 429

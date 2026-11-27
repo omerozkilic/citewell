@@ -93,6 +93,10 @@ class Settings(BaseSettings):
         le=1.0,
         description="Search confidence below this means 'probably not in the documents' (0 = never).",
     )
+    ui: bool = Field(
+        default=True,
+        description="Serve the read-only search page at /ui (static files; API calls still need the token).",
+    )
     metrics: bool = Field(
         default=False,
         description="Serve Prometheus metrics at GET /metrics (needs the API token, if one is set).",

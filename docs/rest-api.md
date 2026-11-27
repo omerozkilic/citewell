@@ -45,6 +45,24 @@ without a collection use the default collection when the token may read it, `"*"
 collections. `CITEWELL_API_TOKEN` stays unrestricted. Once any scoped token exists, the server rejects
 requests without a valid token even if `CITEWELL_API_TOKEN` is unset.
 
+## Web UI
+
+`citewell serve` also serves a small search page at **`http://127.0.0.1:8000/ui`**: a search box, collection
+picker, search mode, number of results and reranking, then the cited passages with page numbers, the
+matching words highlighted and a note when the match is weak ([answerability](#answerability)). It is a
+few static files (HTML, CSS and JavaScript, no build step) shipped inside the package, needs no internet
+and loads nothing from other hosts.
+
+- **Read-only.** It only calls `GET /v1/collections` and `POST /v1/search`.
+- **Token.** The page itself holds no data and loads without a token; its API calls need the bearer token
+  when the server has one. The page then shows a token field and keeps the token in the browser tab's
+  `sessionStorage` only, never in cookies or `localStorage`. A scoped token sees its collections only.
+- **Safe rendering.** Document text is untrusted; it is inserted as plain text, never as HTML. A strict
+  `Content-Security-Policy` (own scripts and styles only, no inline code, no framing) is sent with the files.
+- **Accessible.** Labelled controls, landmarks, a skip link, visible focus, `/` jumps to the search box,
+  colours meet WCAG AA in light and dark mode, and the page is in Turkish or English by browser language.
+- `CITEWELL_UI=false` turns it off.
+
 ## Prometheus metrics
 
 Set `CITEWELL_METRICS=true` to serve `GET /metrics` (Prometheus text format; no extra dependency). It is

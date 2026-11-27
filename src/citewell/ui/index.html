@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Citewell</title>
+  <link rel="stylesheet" href="/ui/style.css">
+  <script src="/ui/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#results" data-i18n="skip">Skip to results</a>
+  <header>
+    <h1>Citewell</h1>
+    <p class="tagline" data-i18n="tagline">Search your documents and get cited passages.</p>
+  </header>
+
+  <main>
+    <form id="search-form" role="search" autocomplete="off">
+      <div class="row">
+        <label for="q" data-i18n="query">Question or keywords</label>
+        <input id="q" name="q" type="search" required autofocus spellcheck="false">
+      </div>
+      <div class="row options">
+        <div>
+          <label for="collection" data-i18n="collection">Collection</label>
+          <select id="collection" name="collection"></select>
+        </div>
+        <div>
+          <label for="mode" data-i18n="mode">Mode</label>
+          <select id="mode" name="mode">
+            <option value="hybrid">hybrid</option>
+            <option value="vector">vector</option>
+            <option value="keyword">keyword</option>
+          </select>
+        </div>
+        <div>
+          <label for="k" data-i18n="count">Results</label>
+          <input id="k" name="k" type="number" min="1" max="50" value="5">
+        </div>
+        <div class="check">
+          <input id="rerank" name="rerank" type="checkbox">
+          <label for="rerank" data-i18n="rerank">Rerank</label>
+        </div>
+        <button type="submit" id="go" data-i18n="search">Search</button>
+      </div>
+    </form>
+
+    <details id="token-box" hidden>
+      <summary data-i18n="tokenTitle">Access token</summary>
+      <p id="token-help" data-i18n="tokenHelp">This server asks for a bearer token. It is kept for this browser tab only.</p>
+      <div class="row inline">
+        <label for="token" data-i18n="token">Token</label>
+        <input id="token" type="password" autocomplete="off" aria-describedby="token-help">
+        <button type="button" id="token-save" data-i18n="tokenSave">Use token</button>
+      </div>
+    </details>
+
+    <p id="status" role="status" aria-live="polite"></p>
+    <p id="error" role="alert" hidden></p>
+    <div id="banner" hidden></div>
+    <ol id="results" aria-label="Results" tabindex="-1"></ol>
+  </main>
+
+  <footer>
+    <p data-i18n="footer">Read-only. Passages are shown as plain text from your documents. Press / to jump to the search box.</p>
+  </footer>
+</body>
+</html>
