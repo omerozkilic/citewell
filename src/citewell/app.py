@@ -101,6 +101,14 @@ class Citewell:
         return self._embedder
 
     @property
+    def embedder_loaded(self) -> bool:
+        return self._embedder is not None
+
+    @property
+    def reranker_loaded(self) -> bool:
+        return self._reranker_loaded
+
+    @property
     def reranker(self) -> Reranker | None:
         if not self._reranker_loaded:
             with self._lock:
@@ -162,6 +170,12 @@ class _LazyRerankSearch(SearchService):
         self.store = app.store
         self.settings = app.settings
         self.metrics = app.metrics if app.settings.metrics else None
+
+    def _embedder_ready(self) -> bool:
+        return self._app.embedder_loaded
+
+    def _reranker_ready(self) -> bool:
+        return self.settings.reranker_backend == "none" or self._app.reranker_loaded
 
     @property
     def embedder(self) -> Embedder:

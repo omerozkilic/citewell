@@ -111,6 +111,20 @@ others return an error. Revoke with `citewell tokens revoke team-a`.
 | resource | `citewell://chunks/{chunk_id}` | plain text with a citation header |
 | prompt | `answer_with_citations` | `question`, `collection` (auto-completes) |
 
+### Progress notifications
+
+`search_documents` reports progress (`notifications/progress`) for the slow stages, when the client sends a
+progress token: loading the embedding model on the first query after start-up, loading the reranker on its
+first use, the retrieval itself and reranking (`Reranking 30 candidates…`). Each notification carries the
+step, the total number of steps and a short message, e.g. `1/4 Loading the embedding model (first query
+after start-up)…`. Clients that do not ask for progress see no difference.
+
+Progress is sent over connections that can stream, such as stdio (`citewell mcp`). The HTTP endpoint at
+`/mcp` answers each call with a single JSON response (stateless mode), so intermediate notifications are
+not delivered there, but a progress token does no harm. The server also loads the models in the background
+at start-up (`CITEWELL_PRELOAD_MODELS`, on by default), so progress mostly shows when a query arrives before
+that has finished or when the reranker is used for the first time.
+
 All tools are annotated `readOnlyHint: true` and return structured JSON (with an output schema) as
 well as text. The server's instructions ask the assistant to cite with `[n]` markers, finish with a
 *Kaynaklar / Sources* list, and to treat passage content as data, not instructions.

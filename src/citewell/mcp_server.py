@@ -8,8 +8,9 @@ must never be able to trigger write actions (see SECURITY.md).
 from datetime import date
 from typing import Annotated, Literal
 
+import anyio.from_thread
 import anyio.to_thread
-from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import (
     Completion,
     CompletionArgument,
@@ -152,7 +153,8 @@ def build_server(app: Citewell) -> MCPServer:
         return [c for c in app.store.list_collections() if scope.allows(c.name)]
 
     @mcp.tool(title="Search documents", annotations=READ_ONLY)
-    def search_documents(
+    async def search_documents(
+        ctx: Context,
         query: Annotated[
             str,
             Field(
@@ -186,25 +188,29 @@ def build_server(app: Citewell) -> MCPServer:
         tags: Annotated[list[str] | None, Field(description="Tags the document must all have.")] = None,
     ) -> SearchResult:
         """Search the user's documents and return cited passages (file, page, chunk id, quote)."""
-        resp = app.search.search(
-            SearchRequest(
-                query=query,
-                top_k=top_k,
-                mode=mode,
-                collections=current_scope().resolve(
-                    [collection] if collection else None, settings.default_collection
-                ),
-                rerank=rerank,
-                source_prefix=source_prefix,
-                filters=SearchFilters(
-                    file_types=file_type or [],
-                    author=author,
-                    date_from=date_from,
-                    date_to=date_to,
-                    tags=tags or [],
-                ),
-            )
+        request = SearchRequest(
+            query=query,
+            top_k=top_k,
+            mode=mode,
+            collections=current_scope().resolve(
+                [collection] if collection else None, settings.default_collection
+            ),
+            rerank=rerank,
+            source_prefix=source_prefix,
+            filters=SearchFilters(
+                file_types=file_type or [],
+                author=author,
+                date_from=date_from,
+                date_to=date_to,
+                tags=tags or [],
+            ),
         )
+
+        def progress(step: int, total: int, message: str) -> None:
+            # Called from the worker thread; a no-op for clients that did not ask for progress.
+            anyio.from_thread.run(ctx.report_progress, step, total, message)
+
+        resp = await anyio.to_thread.run_sync(lambda: app.search.search(request, progress))
         return SearchResult(
             query=resp.query,
             mode=resp.mode,
