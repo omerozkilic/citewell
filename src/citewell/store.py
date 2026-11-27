@@ -17,6 +17,7 @@ from psycopg_pool import ConnectionPool
 
 from citewell import db
 from citewell.auth import Scope
+from citewell.citations import CiteItem
 from citewell.embeddings import Vector
 from citewell.models import (
     ChunkDraft,
@@ -277,6 +278,28 @@ class Store:
         if chunk_id_ not in found:
             raise NotFoundError(f"chunk not found: {chunk_id_}")
         return found[chunk_id_]
+
+    def cite_items(self, ids: Sequence[str]) -> list[CiteItem]:
+        """Citation data for chunk ids, in the order given (unknown ids raise ``NotFoundError``)."""
+        found: dict[str, CiteItem] = {}
+        if ids:
+            with self.conn() as conn, conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT c.id AS chunk_id, d.source, d.title, d.author, d.doc_date,
+                           c.page, c.page_label, c.section, col.name AS collection
+                    FROM chunks c
+                    JOIN documents d ON d.id = c.document_id
+                    JOIN collections col ON col.id = c.collection_id
+                    WHERE c.id = ANY(%s)
+                    """,
+                    (list(ids),),
+                )
+                found = {r["chunk_id"]: CiteItem(**r) for r in cur.fetchall()}
+        missing = [i for i in ids if i not in found]
+        if missing:
+            raise NotFoundError(f"chunk not found: {', '.join(missing)}")
+        return [found[i] for i in ids]
 
     def neighbours(self, chunk_id_: str, window: int = 1) -> list[ChunkRecord]:
         """The chunk plus ``window`` chunks before/after it in the same document."""

@@ -1,0 +1,40 @@
+[
+  {
+    "id": "is-kanunu-4857-piv-a1b2c3",
+    "type": "document",
+    "title": "İş Kanunu (4857) & Yönetmelikler",
+    "author": [
+      {
+        "literal": "Çalışma ve Sosyal Güvenlik Bakanlığı"
+      }
+    ],
+    "issued": {
+      "date-parts": [
+        [
+          2003,
+          6,
+          10
+        ]
+      ]
+    },
+    "page": "iv",
+    "source": "hukuk/is-kanunu_4857.pdf",
+    "note": "chunk a1b2c3d4e5f6a7b8c9d0"
+  },
+  {
+    "id": "calisan-el-kitabi-p4-0f9e8d",
+    "type": "document",
+    "title": "Çalışan El Kitabı",
+    "page": "4",
+    "source": "ik/calisan-el-kitabi.pdf",
+    "note": "chunk 0f9e8d7c6b5a49382716"
+  },
+  {
+    "id": "draft-100-123456",
+    "type": "document",
+    "title": "notes/{draft}_100%.md",
+    "section": "Parola Kuralları",
+    "source": "notes/{draft}_100%.md",
+    "note": "chunk 123456abcdef7890fedc"
+  }
+]
