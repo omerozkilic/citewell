@@ -12,11 +12,12 @@ from fastapi.responses import JSONResponse
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
-from starlette.types import ASGIApp, Receive, Send
+from starlette.types import ASGIApp, Message, Receive, Send
 from starlette.types import Scope as Scope_
 
 from citewell import __version__
 from citewell.app import Citewell
+from citewell.audit import AuditLog
 from citewell.auth import (
     ADMIN,
     UNRESTRICTED,
@@ -92,6 +93,7 @@ class BearerAuthMiddleware:
         self.app = app
         self.cw = cw
         self.limiter = RateLimiter(cw.settings.rate_limit_per_minute)
+        self.audit = AuditLog(cw.settings.audit_log)
         self.token = token.encode() if token is not None else None
         self.exempt = exempt
 
@@ -110,6 +112,31 @@ class BearerAuthMiddleware:
         if scope["type"] != "http" or scope["path"] in self.exempt:
             await self.app(scope, receive, send)
             return
+        status_code = 500
+        caller: Scope | None = None
+
+        async def send_logged(message: Message) -> None:
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message["status"]
+            await send(message)
+
+        try:
+            caller = await self._handle(scope, receive, send_logged)
+        finally:
+            if self.audit.enabled:
+                client = scope.get("client")
+                await run_in_threadpool(
+                    self.audit.record,
+                    caller.token_name if caller else None,
+                    scope["method"],
+                    scope["path"],
+                    status_code,
+                    client[0] if client else None,
+                )
+
+    async def _handle(self, scope: Scope_, receive: Receive, send: Send) -> Scope | None:
+        """Authenticate, rate-limit and forward the request; returns the caller (None if rejected)."""
         headers = dict(scope.get("headers") or [])
         auth = headers.get(b"authorization", b"")
         scheme, _, value = auth.partition(b" ")
@@ -119,19 +146,20 @@ class BearerAuthMiddleware:
             response = JSONResponse({"detail": "invalid or missing bearer token"}, status_code=401)
             response.headers["WWW-Authenticate"] = "Bearer"
             await response(scope, receive, send)
-            return
+            return None
         client = scope.get("client")
         retry_after = self.limiter.check(caller.token_name or (client[0] if client else "unknown"))
         if retry_after is not None:
             limited = JSONResponse({"detail": "rate limit exceeded"}, status_code=429)
             limited.headers["Retry-After"] = str(math.ceil(retry_after) or 1)
             await limited(scope, receive, send)
-            return
+            return caller
         reset = set_scope(caller)
         try:
             await self.app(scope, receive, send)
         finally:
             reset_scope(reset)
+        return caller
 
 
 def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> FastAPI:

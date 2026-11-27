@@ -7,6 +7,7 @@ Every setting can be provided through an environment variable prefixed with
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator
@@ -81,6 +82,10 @@ class Settings(BaseSettings):
         default=0,
         ge=0,
         description="Max HTTP requests per minute for each token (or client address); 0 = unlimited.",
+    )
+    audit_log: Path | None = Field(
+        default=None,
+        description="Append one JSON line per HTTP request (token name, method, path, status) to this file.",
     )
     candidate_pool: int = Field(default=40, description="Per-retriever candidates fed into RRF.")
     rrf_k: int = 60

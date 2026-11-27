@@ -33,6 +33,9 @@ Citewell is designed to run **locally or inside a trusted network**. Things to k
   auth for REST and MCP) and put it behind TLS. To share a server, give each person or tool a scoped
   token (`citewell tokens create`, ADR-0008): it is limited to its collections, read-only unless created
   with `--write`, stored only as a SHA-256 and revocable at once.
+- **Audit log.** `CITEWELL_AUDIT_LOG` writes one JSON line per request (token name, client address, method,
+  path, status; failed logins and rate-limited requests included). Query strings, bodies and document
+  text are never recorded. MCP calls appear as `POST /mcp` without the tool name.
 - **Rate limiting.** `CITEWELL_RATE_LIMIT_PER_MINUTE` caps requests per token (per client address without
   tokens) on REST and HTTP MCP. The counter lives in each server process, so with several workers the
   effective limit is per worker; use a reverse proxy for a hard global limit.

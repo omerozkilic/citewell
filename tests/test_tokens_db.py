@@ -378,3 +378,31 @@ def test_rate_limit_keys_anonymous_clients_by_address(citewell: Citewell) -> Non
     with TestClient(app) as c:
         assert c.get("/v1/collections").status_code == 200
         assert c.get("/v1/collections").status_code == 429
+
+
+def test_audit_log_records_who_and_what_but_not_queries(
+    citewell: Citewell, tokens: dict[str, str], tmp_path: Any
+) -> None:
+    import json
+
+    log = tmp_path / "audit.jsonl"
+    settings = make_settings(api_token="admin-secret", rate_limit_per_minute=3, audit_log=log)
+    with TestClient(create_app(Citewell(settings), mount_mcp=False)) as c:
+        reader = _bearer(tokens["reader"])
+        c.get("/health")  # exempt: not logged
+        c.get("/v1/search", params={"q": "gizli sorgu metni", "collection": "default"}, headers=reader)
+        c.get("/v1/search", params={"q": "x", "collection": "handbook-en"}, headers=reader)
+        c.get("/v1/collections", headers=_bearer("cw_wrong"))
+        c.get("/v1/collections", headers=reader)
+        c.get("/v1/collections", headers=reader)  # fourth request of the token: rate limited
+    raw = log.read_text(encoding="utf-8")
+    assert "gizli" not in raw and "handbook-en" not in raw  # no query strings
+    rows = [json.loads(line) for line in raw.splitlines()]
+    assert [(r["token"], r["path"], r["status"]) for r in rows] == [
+        ("reader", "/v1/search", 200),
+        ("reader", "/v1/search", 403),
+        (None, "/v1/collections", 401),
+        ("reader", "/v1/collections", 200),
+        ("reader", "/v1/collections", 429),
+    ]
+    assert all(r["method"] == "GET" for r in rows)
