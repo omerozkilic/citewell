@@ -52,7 +52,7 @@ to start with a different configuration rather than silently mixing incompatible
 | Variable | Default | Notes |
 |---|---|---|
 | `CITEWELL_HOST` / `_PORT` | `127.0.0.1` / `8000` | Docker image uses `0.0.0.0` (port published on localhost) |
-| `CITEWELL_API_TOKEN` | unset | bearer token for REST and HTTP MCP |
+| `CITEWELL_API_TOKEN` | unset | unrestricted bearer token for REST and HTTP MCP; per-collection tokens: `citewell tokens create` |
 | `CITEWELL_ALLOWED_HOSTS` | `[]` | extra `Host` values for DNS-rebinding protection, JSON list, e.g. `["citewell:*"]` |
 | `CITEWELL_MAX_UPLOAD_MB` | `50` | |
 | `CITEWELL_OCR` | `off` | `auto`: OCR PDF pages without a text layer. Needs `citewell[ocr]` and tesseract; see [Scanned PDFs](getting-started.md#scanned-pdfs-ocr). |

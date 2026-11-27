@@ -30,9 +30,11 @@ app = typer.Typer(
 collections_app = typer.Typer(help="Manage collections.", no_args_is_help=True)
 documents_app = typer.Typer(help="Manage ingested documents.", no_args_is_help=True)
 models_app = typer.Typer(help="Manage local models.", no_args_is_help=True)
+tokens_app = typer.Typer(help="Manage scoped API tokens for the HTTP server.", no_args_is_help=True)
 app.add_typer(collections_app, name="collections")
 app.add_typer(documents_app, name="documents")
 app.add_typer(models_app, name="models")
+app.add_typer(tokens_app, name="tokens")
 
 # Human output goes to stderr so stdout stays clean for --json and for MCP stdio.
 console = Console(stderr=True)
@@ -596,6 +598,84 @@ def documents_delete(
     if not ok:
         raise _fail("document not found")
     console.print(f"[green]✓[/] deleted {source}")
+
+
+# --------------------------------------------------------------------------- tokens
+
+
+@tokens_app.command("create")
+def tokens_create(
+    name: Annotated[str, typer.Argument(help="A label to recognise the token by.")],
+    collection: Annotated[
+        list[str] | None,
+        typer.Option("--collection", "-c", help="Collection the token may access (repeatable)."),
+    ] = None,
+    all_collections: Annotated[
+        bool, typer.Option("--all-collections", help="Allow every collection.")
+    ] = False,
+    write: Annotated[bool, typer.Option("--write", help="Also allow ingest and delete over REST.")] = False,
+) -> None:
+    """Create a token. It is shown once; only its hash is stored."""
+    from citewell import auth
+    from citewell.store import NotFoundError
+
+    if bool(collection) == all_collections:
+        raise _fail("pass either --collection NAME (repeatable) or --all-collections")
+    cw = _citewell()
+    secret = auth.new_token()
+    try:
+        info = cw.store.create_token(name, auth.hash_token(secret), collection, write)
+    except (ValueError, NotFoundError) as exc:
+        raise _fail(str(exc)) from exc
+    finally:
+        cw.close()
+    scope = "all collections" if info.collections is None else ", ".join(info.collections)
+    console.print(
+        f"[green]✓[/] token [bold]{escape(info.name)}[/] ({scope}; {'read/write' if write else 'read-only'})"
+    )
+    out.print(secret, soft_wrap=True)
+    console.print(
+        "[dim]Store it now: it cannot be shown again. Send it as 'Authorization: Bearer <token>'.[/]"
+    )
+
+
+@tokens_app.command("list")
+def tokens_list(
+    revoked: Annotated[bool, typer.Option("--revoked", help="Include revoked tokens.")] = False,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """List tokens (never their secrets)."""
+    cw = _citewell()
+    try:
+        tokens = cw.store.list_tokens(include_revoked=revoked)
+    finally:
+        cw.close()
+    if as_json:
+        out.print_json(json.dumps([t.model_dump(mode="json") for t in tokens]))
+        return
+    table = Table("name", "collections", "access", "created", "revoked")
+    for t in tokens:
+        table.add_row(
+            t.name,
+            "*" if t.collections is None else ", ".join(t.collections),
+            "read/write" if t.can_write else "read",
+            t.created_at.strftime("%Y-%m-%d") if t.created_at else "",
+            t.revoked_at.strftime("%Y-%m-%d") if t.revoked_at else "",
+        )
+    out.print(table)
+
+
+@tokens_app.command("revoke")
+def tokens_revoke(name: str) -> None:
+    """Revoke a token by name; it stops working immediately."""
+    cw = _citewell()
+    try:
+        ok = cw.store.revoke_token(name)
+    finally:
+        cw.close()
+    if not ok:
+        raise _fail(f"no active token named '{name}'")
+    console.print(f"[green]✓[/] revoked {escape(name)}")
 
 
 # --------------------------------------------------------------------------- models

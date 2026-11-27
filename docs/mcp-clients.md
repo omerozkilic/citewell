@@ -88,6 +88,15 @@ If `CITEWELL_API_TOKEN` is set, HTTP clients must send `Authorization: Bearer <t
 claude mcp add --transport http citewell http://localhost:8000/mcp --header "Authorization: Bearer $TOKEN"
 ```
 
+To give a client access to only some collections, create a scoped token and use it the same way:
+
+```bash
+citewell tokens create team-a -c handbook -c policies     # read-only; add --write for REST ingest
+```
+
+With a scoped token `list_collections` and the resources show only its collections, and requests for
+others return an error. Revoke with `citewell tokens revoke team-a`.
+
 ## Tools, resources and prompts
 
 | Kind | Name | Notes |

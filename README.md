@@ -214,7 +214,7 @@ curl -s -F file=@politika.pdf -F collection=handbook localhost:8000/v1/documents
 ```
 
 `GET /health` · `POST|GET /v1/search` · `POST /v1/verify` · `GET /v1/chunks/{id}?context=1` · `GET|POST|DELETE /v1/collections` ·
-`GET|POST|DELETE /v1/documents` — full schema at `/docs`. Set `CITEWELL_API_TOKEN` to require a bearer token.
+`GET|POST|DELETE /v1/documents` — full schema at `/docs`. Set `CITEWELL_API_TOKEN` to require a bearer token, or create per-collection tokens with `citewell tokens create`.
 
 ## How it works
 

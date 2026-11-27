@@ -634,7 +634,8 @@ def test_api_rejects_oversized_query(citewell: Citewell) -> None:
     from citewell.api import create_app
     from citewell.config import MAX_QUERY_CHARS
 
-    with TestClient(create_app(citewell, mount_mcp=False)) as c:
+    # Own instance: the app lifespan closes its Citewell, which must not be the shared session one.
+    with TestClient(create_app(Citewell(make_settings()), mount_mcp=False)) as c:
         too_long = "a" * (MAX_QUERY_CHARS + 1)
         assert c.get("/v1/search", params={"q": too_long}).status_code == 422
         assert c.post("/v1/search", json={"query": too_long}).status_code == 422
