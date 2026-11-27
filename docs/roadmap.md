@@ -23,12 +23,12 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
 - [x] `ingest --prune` keeps a collection in sync with a folder ([#15](https://github.com/omerozkilic/citewell/issues/15))
 - [x] Workflow actions pinned to commit SHAs ([#16](https://github.com/omerozkilic/citewell/issues/16))
 
-## 0.3 — more document types
+## 0.3 — more document types ✅
 - [x] OCR for scanned PDFs (Tesseract `tur`) ([#17](https://github.com/omerozkilic/citewell/issues/17))
 - [x] Better tables in PDFs ([#18](https://github.com/omerozkilic/citewell/issues/18))
 - [x] `citewell watch`: re-index a folder when files change ([#19](https://github.com/omerozkilic/citewell/issues/19))
 - [x] Complete the legislation eval with KVKK and the Constitution ([#20](https://github.com/omerozkilic/citewell/issues/20))
-- [ ] List Citewell in the official MCP Registry (`server.json` ready; publish after the release, see CONTRIBUTING) ([#21](https://github.com/omerozkilic/citewell/issues/21))
+- [x] List Citewell in the official MCP Registry (`server.json` ready; publish after the release, see CONTRIBUTING) ([#21](https://github.com/omerozkilic/citewell/issues/21))
 - [x] More Turkish eval questions ([#22](https://github.com/omerozkilic/citewell/issues/22))
 - [x] `citewell doctor`: diagnose the install ([#35](https://github.com/omerozkilic/citewell/issues/35))
 - [x] More loaders: EPUB, PPTX, XLSX/CSV, EML ([#36](https://github.com/omerozkilic/citewell/issues/36))
