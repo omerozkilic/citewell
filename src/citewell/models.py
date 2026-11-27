@@ -175,6 +175,14 @@ class SearchResponse(BaseModel):
     collections: list[str]
     took_ms: float
     hits: list[SearchHit]
+    confidence: float = Field(
+        default=0.0,
+        description="0-1 estimate of how well the passages cover the question (see answerability).",
+    )
+    answerable: bool = Field(
+        default=False,
+        description="False when the documents probably do not answer the question: say so, do not guess.",
+    )
 
 
 class ChunkRecord(BaseModel):

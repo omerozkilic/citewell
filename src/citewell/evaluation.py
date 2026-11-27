@@ -31,7 +31,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from citewell.models import SearchHit
 from citewell.search import SearchRequest, SearchService
@@ -53,13 +53,24 @@ class RelevantItem(BaseModel):
 class EvalQuery(BaseModel):
     id: str
     query: str
-    relevant: list[RelevantItem] = Field(min_length=1)
+    relevant: list[RelevantItem] = Field(default_factory=list)
+    answerable: bool = Field(
+        default=True, description="False for questions the documents do not answer (no relevant items)."
+    )
     collection: str | None = None
     tags: list[str] = Field(default_factory=list)
     answers: list[str] = Field(
         default_factory=list,
         description="Strings the relevant passages must contain (used by tests to keep labels honest).",
     )
+
+    @model_validator(mode="after")
+    def _relevant_matches_answerable(self) -> EvalQuery:
+        if self.answerable and not self.relevant:
+            raise ValueError("an answerable query needs at least one relevant item")
+        if not self.answerable and self.relevant:
+            raise ValueError("an unanswerable query must not list relevant items")
+        return self
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +100,9 @@ class QueryResult:
     page_hit: bool | None
     latency_ms: float
     top: list[dict[str, object]] = field(default_factory=list)
+    expected_answerable: bool = True
+    confidence: float = 0.0
+    flagged_answerable: bool = True
 
 
 @dataclass(slots=True)
@@ -105,6 +119,11 @@ class RunReport:
     latency_p95_ms: float
     latency_mean_ms: float
     queries: list[QueryResult]
+    false_abstain_rate: float | None = None
+    """Answerable questions the signal marked 'not in the documents' (lower is better)."""
+    false_answer_rate: float | None = None
+    """Unanswerable questions the signal marked answerable (lower is better)."""
+    answerable_threshold: float = 0.0
 
     def summary(self) -> dict[str, object]:
         return {
@@ -119,7 +138,17 @@ class RunReport:
             "latency_p50_ms": round(self.latency_p50_ms, 1),
             "latency_p95_ms": round(self.latency_p95_ms, 1),
             "latency_mean_ms": round(self.latency_mean_ms, 1),
-        }
+        } | self._answerability_summary()
+
+    def _answerability_summary(self) -> dict[str, object]:
+        out: dict[str, object] = {}
+        if self.false_abstain_rate is not None:
+            out["false_abstain_rate"] = round(self.false_abstain_rate, 4)
+        if self.false_answer_rate is not None:
+            out["false_answer_rate"] = round(self.false_answer_rate, 4)
+        if out:
+            out["answerable_threshold"] = self.answerable_threshold
+        return out
 
 
 def load_dataset(path: Path) -> list[EvalQuery]:
@@ -178,6 +207,7 @@ def run_eval(
     k: int = 5,
     default_collection: str | None = None,
     warmup: bool = True,
+    answerable_threshold: float | None = None,
 ) -> RunReport:
     queries = list(dataset)
     if warmup and queries:
@@ -193,6 +223,9 @@ def run_eval(
             )
         )
 
+    threshold = (
+        service.settings.answerable_threshold if answerable_threshold is None else answerable_threshold
+    )
     results: list[QueryResult] = []
     for q in queries:
         col = q.collection or default_collection
@@ -203,7 +236,10 @@ def run_eval(
             )
         )
         latency = (time.perf_counter() - t0) * 1000
-        first, recall, doc_hit, page_hit = score_query(q, resp.hits, k)
+        if q.answerable:
+            first, recall, doc_hit, page_hit = score_query(q, resp.hits, k)
+        else:  # nothing to retrieve: only the answerability signal is judged
+            first, recall, doc_hit, page_hit = None, 0.0, False, None
         results.append(
             QueryResult(
                 id=q.id,
@@ -216,30 +252,52 @@ def run_eval(
                 top=[
                     {"rank": h.rank, "source": h.source, "page": h.page, "score": h.score} for h in resp.hits
                 ],
+                expected_answerable=q.answerable,
+                confidence=resp.confidence,
+                flagged_answerable=bool(resp.hits) and resp.confidence >= threshold,
             )
         )
 
-    n = len(results)
     lat = [r.latency_ms for r in results]
-    paged = [r.page_hit for r in results if r.page_hit is not None]
+    rated = [r for r in results if r.expected_answerable]  # ranking metrics need relevant items
+    n = len(rated)
+    paged = [r.page_hit for r in rated if r.page_hit is not None]
+    unanswerable = [r for r in results if not r.expected_answerable]
     return RunReport(
         label=run.label,
         k=k,
-        n=n,
-        recall_at_k=statistics.fmean(r.recall for r in results) if n else 0.0,
-        mrr_at_k=statistics.fmean(
-            1 / r.first_relevant_rank if r.first_relevant_rank else 0.0 for r in results
-        )
+        n=len(results),
+        recall_at_k=statistics.fmean(r.recall for r in rated) if n else 0.0,
+        mrr_at_k=statistics.fmean(1 / r.first_relevant_rank if r.first_relevant_rank else 0.0 for r in rated)
         if n
         else 0.0,
-        hit_at_k=sum(r.first_relevant_rank is not None for r in results) / n if n else 0.0,
-        doc_hit_at_k=sum(r.doc_hit for r in results) / n if n else 0.0,
+        hit_at_k=sum(r.first_relevant_rank is not None for r in rated) / n if n else 0.0,
+        doc_hit_at_k=sum(r.doc_hit for r in rated) / n if n else 0.0,
         page_hit_at_k=(sum(paged) / len(paged)) if paged else None,
         latency_p50_ms=percentile(lat, 50),
         latency_p95_ms=percentile(lat, 95),
         latency_mean_ms=statistics.fmean(lat) if lat else 0.0,
         queries=results,
+        false_abstain_rate=sum(not r.flagged_answerable for r in rated) / n if n else None,
+        false_answer_rate=(
+            sum(r.flagged_answerable for r in unanswerable) / len(unanswerable) if unanswerable else None
+        ),
+        answerable_threshold=threshold,
     )
+
+
+ANSWERABILITY_HEADERS = ("False abstain", "False answer")
+
+
+def answerability_cells(r: RunReport) -> tuple[str, str]:
+    def fmt(v: float | None) -> str:
+        return "–" if v is None else f"{v:.3f}"
+
+    return fmt(r.false_abstain_rate), fmt(r.false_answer_rate)
+
+
+def has_answerability(reports: Sequence[RunReport]) -> bool:
+    return any(r.false_abstain_rate is not None or r.false_answer_rate is not None for r in reports)
 
 
 def report_markdown(reports: Sequence[RunReport]) -> str:
@@ -247,16 +305,20 @@ def report_markdown(reports: Sequence[RunReport]) -> str:
     if not reports:
         return ""
     k = reports[0].k
-    lines = [
-        f"| Run | Recall@{k} | MRR@{k} | Hit@{k} | Page hit@{k} | p50 ms | p95 ms |",
-        "|---|---:|---:|---:|---:|---:|---:|",
-    ]
+    extra = has_answerability(reports)
+    head = f"| Run | Recall@{k} | MRR@{k} | Hit@{k} | Page hit@{k} | p50 ms | p95 ms |"
+    lines = [head, "|---|---:|---:|---:|---:|---:|---:|"]
+    if extra:
+        lines = [head + " " + " | ".join(ANSWERABILITY_HEADERS) + " |", lines[1] + "---:|---:|"]
     for r in reports:
         page = "–" if r.page_hit_at_k is None else f"{r.page_hit_at_k:.3f}"
-        lines.append(
+        row = (
             f"| {r.label} | {r.recall_at_k:.3f} | {r.mrr_at_k:.3f} | {r.hit_at_k:.3f} | {page} | "
             f"{r.latency_p50_ms:.0f} | {r.latency_p95_ms:.0f} |"
         )
+        if extra:
+            row += " " + " | ".join(answerability_cells(r)) + " |"
+        lines.append(row)
     return "\n".join(lines)
 
 

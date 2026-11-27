@@ -1,0 +1,31 @@
+// Questions the sample corpora do NOT answer (examples/corpus, examples/corpus-en): the answerability signal should say
+// 'not in the documents'. They reuse words of the corpus on purpose (company, policy, leave, security...).
+// Not counted in Recall/MRR. Run: citewell eval examples/eval/unanswerable.jsonl
+{"id": "na01", "query": "Şirketin yemekhanesinde öğle yemeği saat kaçta veriliyor?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na02", "query": "Hisse senedi opsiyon planı nasıl işliyor?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na03", "query": "Ofise evcil hayvan getirmek serbest mi?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na04", "query": "Şirket aracı tahsisi için kimlere başvurulur?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na05", "query": "İstanbul ofisinin adresi nedir?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na06", "query": "Defne Yazılım'ın kaç çalışanı var?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na07", "query": "Doğum izninden sonra yarım gün çalışma hakkı var mı?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na08", "query": "Yıllık performans değerlendirmesi hangi ayda yapılır?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na09", "query": "Şirketin kuruluş yılı kaçtır?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na10", "query": "Müşteri sözleşmelerinde ödeme vadesi kaç gündür?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na11", "query": "Yazılım geliştirme sürecinde hangi programlama dilleri kullanılır?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na12", "query": "Şirket içi eğitimler için ayrılan yıllık bütçe ne kadardır?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na13", "query": "Kapalı otoparkta çalışanlara yer ayrılıyor mu?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na14", "query": "Emeklilik için ek bireysel katkı payı sağlanıyor mu?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na15", "query": "Ofisin kablosuz ağ parolası nedir?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na16", "query": "Stajyerlere ne kadar maaş ödeniyor?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na17", "query": "Şirket yemek kartı limiti ne kadardır?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na18", "query": "Yedek sunucular hangi veri merkezinde barındırılıyor?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na19", "query": "Ekip toplantıları haftanın hangi günü yapılır?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na20", "query": "Dünyanın en yüksek dağı hangisidir?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na21", "query": "Bugün hava nasıl olacak?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na22", "query": "Python'da liste nasıl sıralanır?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na23", "query": "İstanbul'dan Ankara'ya tren seferleri kaçta kalkıyor?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na24", "query": "Çalışanların kişisel telefon kullanımı iş saatlerinde yasak mı?", "relevant": [], "answerable": false, "collection": "default"}
+{"id": "na25", "query": "What is the office wifi password?", "relevant": [], "answerable": false, "collection": "handbook-en"}
+{"id": "na26", "query": "Which cloud provider hosts the production database?", "relevant": [], "answerable": false, "collection": "handbook-en"}
+{"id": "na27", "query": "How many days of paternity leave do employees get?", "relevant": [], "answerable": false, "collection": "handbook-en"}
+{"id": "na28", "query": "Who won the football world cup in 2018?", "relevant": [], "answerable": false, "collection": "handbook-en"}

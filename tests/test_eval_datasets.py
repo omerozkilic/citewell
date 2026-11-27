@@ -78,3 +78,15 @@ def test_extended_questions_are_new() -> None:
     new = [_norm(q.query) for q in load_dataset(EVAL / "tr-extended.jsonl")]
     assert not old & set(new), "a question already exists in tr-sample.jsonl"
     assert len(new) == len(set(new))
+
+
+def test_unanswerable_set_is_well_formed_and_really_unanswerable() -> None:
+    queries = load_dataset(EVAL / "unanswerable.jsonl")
+    assert len(queries) >= 25
+    assert all(not q.answerable and not q.relevant for q in queries)
+    ids = [q.id for q in queries]
+    assert len(ids) == len(set(ids))
+    assert {q.collection for q in queries} == {"default", "handbook-en"}
+    # no question may be one of the answerable ones
+    answerable = {_norm(q.query) for name in SAMPLE_SETS for q in load_dataset(EVAL / name)}
+    assert not answerable & {_norm(q.query) for q in queries}

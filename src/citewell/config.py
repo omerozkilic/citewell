@@ -87,6 +87,12 @@ class Settings(BaseSettings):
         default=None,
         description="Append one JSON line per HTTP request (token name, method, path, status) to this file.",
     )
+    answerable_threshold: float = Field(
+        default=0.35,
+        ge=0.0,
+        le=1.0,
+        description="Search confidence below this means 'probably not in the documents' (0 = never).",
+    )
     candidate_pool: int = Field(default=40, description="Per-retriever candidates fed into RRF.")
     rrf_k: int = 60
     quote_max_chars: int = 320

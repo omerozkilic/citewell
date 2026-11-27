@@ -21,6 +21,8 @@ One JSON object per line (`//` comment lines are ignored):
 - `source` is the document path as stored (relative to the ingest root).
 - `page` is optional; omit it for unpaged formats or to accept any page.
 - `collection` falls back to `--collection`, then to the default collection.
+- `"answerable": false` (with `"relevant": []`) marks a question the documents do **not** answer; it is
+  judged by the [answerability signal](#answerability) only and does not count towards Recall/MRR.
 
 ## Metrics
 
@@ -34,6 +36,26 @@ One JSON object per line (`//` comment lines are ignored):
 | Latency | p50 / p95 / mean end-to-end search time (ms), after one warm-up query |
 
 The JSON report includes per-query ranks and top results for error analysis.
+
+## Answerability
+
+Every search also returns `confidence` and `answerable` ("the documents probably do not answer this",
+[ADR-0009](adr/0009-answerability-signal.md)). `citewell eval` measures the signal at
+`CITEWELL_ANSWERABLE_THRESHOLD` (or `--answerable-threshold X`):
+
+| Metric | Definition |
+|---|---|
+| False abstain | Share of answerable questions flagged "not in the documents" (lower is better) |
+| False answer | Share of `answerable: false` questions flagged answerable (lower is better) |
+
+```bash
+citewell eval examples/eval/unanswerable.jsonl -r hybrid --answerable-threshold 0.5
+```
+
+On the sample corpora with the offline backends the default threshold 0.35 gives 0.25 false abstain over all
+answerable sets (0.14-0.17 on tr-sample, 0.31 on the harder tr-extended set) and 0.29 false answer. Tune the threshold on your own
+documents: write a few questions they do not answer, mark them `"answerable": false`, and sweep
+`--answerable-threshold`.
 
 ## In CI
 
