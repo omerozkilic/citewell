@@ -39,7 +39,7 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
 - [x] Security: Parser hardening and model revision pinning ([#51](https://github.com/omerozkilic/citewell/issues/51))
 
 ## 0.4 — UI bridge & sharing (next)
-- [ ] OpenAI-compatible `/v1/chat/completions` adapter so UIs like Open WebUI can use Citewell ([#23](https://github.com/omerozkilic/citewell/issues/23))
+- [x] OpenAI-compatible `/v1/chat/completions` adapter so UIs like Open WebUI can use Citewell ([#23](https://github.com/omerozkilic/citewell/issues/23))
   (generation delegated to a user-configured model; the core stays LLM-free — needs an ADR)
 - [x] Per-collection tokens / read scopes for the HTTP endpoint ([#24](https://github.com/omerozkilic/citewell/issues/24)), [ADR-0008](adr/0008-scoped-api-tokens.md)
 - [x] Per-token rate limiting (`CITEWELL_RATE_LIMIT_PER_MINUTE`, follow-up to #24)

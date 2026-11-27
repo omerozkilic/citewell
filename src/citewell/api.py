@@ -8,10 +8,10 @@ import time
 from collections.abc import AsyncIterator
 from datetime import date
 from importlib import resources
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile, status
-from fastapi.responses import JSONResponse, PlainTextResponse, Response
+from fastapi.responses import JSONResponse, PlainTextResponse, Response, StreamingResponse
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
@@ -46,6 +46,13 @@ from citewell.models import (
     SearchFilters,
     SearchResponse,
     normalise_tags,
+)
+from citewell.openai_compat import (
+    ChatRequest,
+    completion,
+    model_list,
+    render_answer,
+    stream_events,
 )
 from citewell.ratelimit import RateLimiter
 from citewell.search import SearchRequest
@@ -407,6 +414,36 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
         for row in rows:
             scope.require(row.collection)
         return rows
+
+    @api.get("/v1/models", tags=["openai"], summary="Models for OpenAI-compatible clients")
+    def list_models(cw: Svc) -> dict[str, Any]:
+        scope = current_scope()
+        return model_list([c.name for c in cw.store.list_collections() if scope.allows(c.name)])
+
+    @api.post("/v1/chat/completions", tags=["openai"], summary="OpenAI-compatible chat (retrieval only)")
+    def chat_completions(body: ChatRequest, cw: Svc) -> Response:
+        """Returns the cited passages for the last user message as the assistant message. No LLM."""
+        query = body.question()
+        if len(query) > MAX_QUERY_CHARS:
+            raise ValueError(f"the question is longer than {MAX_QUERY_CHARS} characters")
+        name = body.collection()
+        resp = cw.search.search(
+            SearchRequest(
+                query=query,
+                top_k=body.top_k or settings.default_top_k,
+                mode=body.mode or settings.default_mode,
+                collections=current_scope().resolve([name or "*"], settings.default_collection),
+                rerank=body.rerank,
+            )
+        )
+        content = render_answer(resp)
+        if body.stream:
+            return StreamingResponse(
+                stream_events(content, body.model),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
+        return JSONResponse(completion(content, body.model))
 
     @api.post(
         "/v1/cite",

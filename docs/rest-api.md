@@ -10,6 +10,8 @@ Interactive OpenAPI docs: `/docs`.
 | GET | `/v1/search?q=…&k=5&mode=hybrid&collection=…` | Same, as a query string; filters as `type`, `author`, `date_from`, `date_to`, `tag` (repeatable) |
 | POST | `/v1/verify` | Body: `quote`, optional `chunk_id`, `source`, `collections` — checks a quotation against the source |
 | GET | `/v1/chunks/{chunk_id}?context=1` | Chunk with neighbours |
+| GET | `/v1/models` | OpenAI-style model list: `citewell` and one `citewell:NAME` per collection ([chat UIs](open-webui.md)) |
+| POST | `/v1/chat/completions` | OpenAI-compatible chat that returns the cited passages as the reply, also `stream: true` ([chat UIs](open-webui.md)) |
 | POST | `/v1/cite` | Body: `chunk_ids`, `format` (`bibtex` default, `csl-json`, `md`) — citations as BibTeX, CSL-JSON or Markdown footnotes ([details](#citation-export)) |
 | GET | `/v1/collections` | List |
 | POST | `/v1/collections` | `{"name": "hr", "language": "turkish", "description": "…"}` |

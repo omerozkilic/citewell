@@ -45,6 +45,7 @@ nav:
   - Home: index.md
   - Getting started: getting-started.md
   - Connect an assistant: mcp-clients.md
+  - Chat UIs (Open WebUI): open-webui.md
   - Usage:
       - CLI: cli.md
       - REST API: rest-api.md
@@ -62,5 +63,8 @@ nav:
       - adr/0005-local-multilingual-models.md
       - adr/0006-page-aware-chunking.md
       - adr/0007-read-only-mcp.md
+      - adr/0008-scoped-api-tokens.md
+      - adr/0009-answerability-signal.md
+      - adr/0010-openai-compatible-adapter.md
       - adr/template.md
   - Roadmap: roadmap.md

@@ -20,8 +20,9 @@ prompt.
 
 - Works fully offline with no API key; deterministic and cheap to evaluate (pure retrieval metrics).
 - Answer quality depends on the client model — acceptable, since that is the model the user chose.
-- A future OpenAI-compatible endpoint (for UIs such as Open WebUI) will be an *optional* adapter that
-  delegates generation to a user-configured model; the core stays LLM-free.
+- An OpenAI-compatible endpoint for UIs such as Open WebUI is an adapter that returns the cited passages
+  as the message, still without generation ([ADR-0010](0010-openai-compatible-adapter.md)); the core
+  stays LLM-free.
 
 ## Alternatives considered
 
