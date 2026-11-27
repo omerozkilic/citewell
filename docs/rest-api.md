@@ -25,7 +25,7 @@ curl -s localhost:8000/v1/search -H 'content-type: application/json' \
 curl -s -F file=@kvkk-politikasi.pdf -F collection=hukuk localhost:8000/v1/documents
 ```
 
-Errors use standard status codes: `400` invalid input, `401` missing/invalid token, `403` outside the token's scope, `404` unknown
+Errors use standard status codes: `400` invalid input, `401` missing/invalid token, `403` outside the token's scope, `429` rate limit exceeded (`CITEWELL_RATE_LIMIT_PER_MINUTE`), `404` unknown
 collection/chunk, `413` upload too large, `415` unsupported file type.
 
 ## Authentication

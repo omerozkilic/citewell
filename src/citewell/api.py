@@ -3,6 +3,7 @@
 import contextlib
 import hmac
 import logging
+import math
 from collections.abc import AsyncIterator
 from typing import Annotated, Literal
 
@@ -17,6 +18,7 @@ from starlette.types import Scope as Scope_
 from citewell import __version__
 from citewell.app import Citewell
 from citewell.auth import (
+    ADMIN,
     UNRESTRICTED,
     ForbiddenError,
     Scope,
@@ -37,6 +39,7 @@ from citewell.models import (
     QuoteCheck,
     SearchResponse,
 )
+from citewell.ratelimit import RateLimiter
 from citewell.search import SearchRequest
 from citewell.store import NotFoundError, QueryTimeoutError
 
@@ -88,12 +91,13 @@ class BearerAuthMiddleware:
     ):
         self.app = app
         self.cw = cw
+        self.limiter = RateLimiter(cw.settings.rate_limit_per_minute)
         self.token = token.encode() if token is not None else None
         self.exempt = exempt
 
     def _authenticate(self, presented: bytes | None) -> Scope | None:
         if presented and self.token is not None and hmac.compare_digest(presented, self.token):
-            return UNRESTRICTED
+            return ADMIN
         if presented:
             scope = self.cw.store.token_scope(hash_token(presented.decode("utf-8", "replace")))
             if scope is not None:
@@ -115,6 +119,13 @@ class BearerAuthMiddleware:
             response = JSONResponse({"detail": "invalid or missing bearer token"}, status_code=401)
             response.headers["WWW-Authenticate"] = "Bearer"
             await response(scope, receive, send)
+            return
+        client = scope.get("client")
+        retry_after = self.limiter.check(caller.token_name or (client[0] if client else "unknown"))
+        if retry_after is not None:
+            limited = JSONResponse({"detail": "rate limit exceeded"}, status_code=429)
+            limited.headers["Retry-After"] = str(math.ceil(retry_after) or 1)
+            await limited(scope, receive, send)
             return
         reset = set_scope(caller)
         try:

@@ -77,6 +77,11 @@ class Settings(BaseSettings):
         ge=0,
         description="Abort a search query in PostgreSQL after this many milliseconds (0 = no limit).",
     )
+    rate_limit_per_minute: int = Field(
+        default=0,
+        ge=0,
+        description="Max HTTP requests per minute for each token (or client address); 0 = unlimited.",
+    )
     candidate_pool: int = Field(default=40, description="Per-retriever candidates fed into RRF.")
     rrf_k: int = 60
     quote_max_chars: int = 320

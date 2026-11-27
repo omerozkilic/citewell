@@ -41,6 +41,7 @@ to start with a different configuration rather than silently mixing incompatible
 | `CITEWELL_DEFAULT_LANGUAGE` | `turkish` | for new collections |
 | `CITEWELL_DEFAULT_MODE` | `hybrid` | |
 | `CITEWELL_DEFAULT_TOP_K` / `_MAX_TOP_K` | `5` / `50` | |
+| `CITEWELL_RATE_LIMIT_PER_MINUTE` | `0` | Max HTTP requests per minute per token (per client address when no token is used); over the limit REST and MCP get `429` with `Retry-After`. `0` = unlimited. Counted per server process. |
 | `CITEWELL_STATEMENT_TIMEOUT_MS` | `15000` | Cancel a search query in PostgreSQL after this long (`0` = no limit). REST returns `504`. |
 | `CITEWELL_CANDIDATE_POOL` | `40` | per retriever, before fusion |
 | `CITEWELL_RRF_K` | `60` | RRF constant |
