@@ -33,6 +33,9 @@ Citewell is designed to run **locally or inside a trusted network**. Things to k
   auth for REST and MCP) and put it behind TLS. To share a server, give each person or tool a scoped
   token (`citewell tokens create`, ADR-0008): it is limited to its collections, read-only unless created
   with `--write`, stored only as a SHA-256 and revocable at once.
+- **Rate limiting.** `CITEWELL_RATE_LIMIT_PER_MINUTE` caps requests per token (per client address without
+  tokens) on REST and HTTP MCP. The counter lives in each server process, so with several workers the
+  effective limit is per worker; use a reverse proxy for a hard global limit.
 - **Query limits.** Search queries are capped at 2000 characters and `top_k` at `CITEWELL_MAX_TOP_K` on
   both REST and MCP, and every search runs under `CITEWELL_STATEMENT_TIMEOUT_MS` (default 15 s), so a
   single expensive query cannot hold a database connection indefinitely.

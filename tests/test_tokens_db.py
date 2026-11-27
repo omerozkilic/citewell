@@ -351,3 +351,30 @@ def test_cli_tokens_roundtrip(citewell: Citewell, monkeypatch: pytest.MonkeyPatc
         runner.invoke(app, ["tokens", "revoke", "cli-all"])
     finally:
         config.get_settings.cache_clear()
+
+
+def test_rate_limit_is_per_token(citewell: Citewell, tokens: dict[str, str]) -> None:
+    app = create_app(
+        Citewell(make_settings(api_token="admin-secret", rate_limit_per_minute=2)), mount_mcp=False
+    )
+    with TestClient(app) as c:
+        reader, everything = _bearer(tokens["reader"]), _bearer(tokens["everything"])
+        assert [c.get("/v1/collections", headers=reader).status_code for _ in range(2)] == [200, 200]
+        blocked = c.get("/v1/collections", headers=reader)
+        assert blocked.status_code == 429
+        assert blocked.json() == {"detail": "rate limit exceeded"}
+        assert 1 <= int(blocked.headers["Retry-After"]) <= 60
+        # other tokens and the admin token have their own budget; /health is not limited
+        assert c.get("/v1/collections", headers=everything).status_code == 200
+        admin = _bearer("admin-secret")
+        assert [c.get("/v1/collections", headers=admin).status_code for _ in range(3)] == [200, 200, 429]
+        assert all(c.get("/health").status_code == 200 for _ in range(5))
+        # rejected credentials are not counted against anyone
+        assert c.get("/v1/collections", headers=_bearer("cw_wrong")).status_code == 401
+
+
+def test_rate_limit_keys_anonymous_clients_by_address(citewell: Citewell) -> None:
+    app = create_app(Citewell(make_settings(rate_limit_per_minute=1)), mount_mcp=False)
+    with TestClient(app) as c:
+        assert c.get("/v1/collections").status_code == 200
+        assert c.get("/v1/collections").status_code == 429

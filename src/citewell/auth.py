@@ -69,6 +69,7 @@ class Scope:
 
 
 UNRESTRICTED = Scope()
+ADMIN = Scope(token_name="admin")  # noqa: S106  # the CITEWELL_API_TOKEN environment token: unrestricted, but named
 
 _current: contextvars.ContextVar[Scope] = contextvars.ContextVar("citewell_scope", default=UNRESTRICTED)
 
