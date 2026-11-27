@@ -298,6 +298,11 @@ def search(
     if not resp.hits:
         console.print("[yellow]no results[/]")
         return
+    if not resp.answerable:
+        console.print(
+            f"[yellow]⚠ weak match (confidence {resp.confidence:.2f}): "
+            "the documents probably do not answer this[/]"
+        )
     for h in resp.hits:
         loc = h.citation.label().removeprefix(h.source).removeprefix(", ")
         where = f", {loc}" if loc else ""
@@ -450,13 +455,24 @@ def eval_cmd(
     write_baseline: Annotated[
         Path | None, typer.Option("--write-baseline", help="Save these results as a baseline file.")
     ] = None,
+    answerable_threshold: Annotated[
+        float | None,
+        typer.Option(
+            help="Judge answerability at this confidence (default: CITEWELL_ANSWERABLE_THRESHOLD).",
+            min=0.0,
+            max=1.0,
+        ),
+    ] = None,
 ) -> None:
     """Evaluate retrieval quality: Recall@k, MRR, page hit rate and latency."""
     from citewell.evaluation import (
+        ANSWERABILITY_HEADERS,
         RunConfig,
+        answerability_cells,
         baseline_payload,
         compare_to_baseline,
         comparison_markdown,
+        has_answerability,
         load_baseline,
         load_dataset,
         report_markdown,
@@ -474,7 +490,16 @@ def eval_cmd(
         cw.check_schema()
         for cfg in configs:
             with console.status(f"running {cfg.label} on {len(queries)} queries…"):
-                reports.append(run_eval(cw.search, queries, cfg, k=k, default_collection=collection))
+                reports.append(
+                    run_eval(
+                        cw.search,
+                        queries,
+                        cfg,
+                        k=k,
+                        default_collection=collection,
+                        answerable_threshold=answerable_threshold,
+                    )
+                )
     except Exception as exc:
         raise _fail(str(exc)) from exc
     finally:
@@ -483,6 +508,9 @@ def eval_cmd(
     table = Table(title=f"Citewell eval · {dataset.name} · {len(queries)} queries · k={k}")
     for col in ("run", f"Recall@{k}", f"MRR@{k}", f"Hit@{k}", f"Page hit@{k}", "p50 ms", "p95 ms"):
         table.add_column(col, justify="left" if col == "run" else "right")
+    extra = has_answerability(reports)
+    for header in ANSWERABILITY_HEADERS if extra else ():
+        table.add_column(header, justify="right")
     for r in reports:
         table.add_row(
             r.label,
@@ -492,6 +520,7 @@ def eval_cmd(
             "–" if r.page_hit_at_k is None else f"{r.page_hit_at_k:.3f}",
             f"{r.latency_p50_ms:.0f}",
             f"{r.latency_p95_ms:.0f}",
+            *(answerability_cells(r) if extra else ()),
         )
     console.print(table)
     if markdown:

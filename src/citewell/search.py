@@ -7,6 +7,7 @@ import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from citewell.answerability import confidence
 from citewell.config import Settings
 from citewell.embeddings import Embedder
 from citewell.fusion import reciprocal_rank_fusion
@@ -172,6 +173,11 @@ class SearchService:
                     scores={k: round(float(v), 6) for k, v in per_ret.get(cid, {}).items()},
                 )
             )
+        conf = confidence(
+            query,
+            (_rerank_text(h.title, h.section, h.text) for h in hits),
+            (h.scores["rerank"] for h in hits if "rerank" in h.scores),
+        )
         took = (time.perf_counter() - t0) * 1000
         log.debug("search mode=%s k=%s took=%.1fms", req.mode, top_k, took)
         return SearchResponse(
@@ -181,6 +187,8 @@ class SearchService:
             collections=[c.name for c in collections],
             took_ms=round(took, 2),
             hits=hits,
+            confidence=conf,
+            answerable=bool(hits) and conf >= self.settings.answerable_threshold,
         )
 
 

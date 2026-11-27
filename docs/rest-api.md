@@ -44,6 +44,12 @@ without a collection use the default collection when the token may read it, `"*"
 collections. `CITEWELL_API_TOKEN` stays unrestricted. Once any scoped token exists, the server rejects
 requests without a valid token even if `CITEWELL_API_TOKEN` is unset.
 
+## Answerability
+
+Search responses carry `confidence` (0-1) and `answerable`. `answerable: false` means the passages are weak
+matches and the documents probably do not answer the question; the passages are still returned. The
+threshold is `CITEWELL_ANSWERABLE_THRESHOLD`, see [Evaluation](evaluation.md#answerability).
+
 ## Metadata filters
 
 Searches can be narrowed to documents by file type, author, date or tags. All conditions must hold, and
