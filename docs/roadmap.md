@@ -43,7 +43,7 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
   (generation delegated to a user-configured model; the core stays LLM-free — needs an ADR)
 - [x] Per-collection tokens / read scopes for the HTTP endpoint ([#24](https://github.com/omerozkilic/citewell/issues/24)), [ADR-0008](adr/0008-scoped-api-tokens.md)
 - [x] Per-token rate limiting (`CITEWELL_RATE_LIMIT_PER_MINUTE`, follow-up to #24)
-- [ ] Optional audit log (follow-up to #24)
+- [x] Optional audit log (`CITEWELL_AUDIT_LOG`, follow-up to #24)
 - [ ] Progress notifications for long MCP operations ([#25](https://github.com/omerozkilic/citewell/issues/25))
 - [ ] Metadata filters in search ([#39](https://github.com/omerozkilic/citewell/issues/39))
 - [ ] Export citations (BibTeX, CSL-JSON, Markdown footnotes) ([#40](https://github.com/omerozkilic/citewell/issues/40))
