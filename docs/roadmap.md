@@ -23,22 +23,22 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
 - [x] `ingest --prune` keeps a collection in sync with a folder ([#15](https://github.com/omerozkilic/citewell/issues/15))
 - [x] Workflow actions pinned to commit SHAs ([#16](https://github.com/omerozkilic/citewell/issues/16))
 
-## 0.3 — more document types
+## 0.3 — more document types ✅
 - [x] OCR for scanned PDFs (Tesseract `tur`) ([#17](https://github.com/omerozkilic/citewell/issues/17))
 - [x] Better tables in PDFs ([#18](https://github.com/omerozkilic/citewell/issues/18))
 - [x] `citewell watch`: re-index a folder when files change ([#19](https://github.com/omerozkilic/citewell/issues/19))
 - [x] Complete the legislation eval with KVKK and the Constitution ([#20](https://github.com/omerozkilic/citewell/issues/20))
-- [ ] List Citewell in the official MCP Registry (`server.json` ready; publish after the release, see CONTRIBUTING) ([#21](https://github.com/omerozkilic/citewell/issues/21))
+- [x] List Citewell in the official MCP Registry (`server.json` ready; publish after the release, see CONTRIBUTING) ([#21](https://github.com/omerozkilic/citewell/issues/21))
 - [x] More Turkish eval questions ([#22](https://github.com/omerozkilic/citewell/issues/22))
 - [x] `citewell doctor`: diagnose the install ([#35](https://github.com/omerozkilic/citewell/issues/35))
 - [x] More loaders: EPUB, PPTX, XLSX/CSV, EML ([#36](https://github.com/omerozkilic/citewell/issues/36))
-- [ ] CI eval regression gate ([#38](https://github.com/omerozkilic/citewell/issues/38))
-- [ ] Security: Query limits and DB statement timeout ([#48](https://github.com/omerozkilic/citewell/issues/48))
-- [ ] Security: Container hardening in compose.yaml ([#49](https://github.com/omerozkilic/citewell/issues/49))
-- [ ] Security: Supply chain: pip-audit, SBOM and build provenance ([#50](https://github.com/omerozkilic/citewell/issues/50))
-- [ ] Security: Parser hardening and model revision pinning ([#51](https://github.com/omerozkilic/citewell/issues/51))
+- [x] CI eval regression gate ([#38](https://github.com/omerozkilic/citewell/issues/38))
+- [x] Security: Query limits and DB statement timeout ([#48](https://github.com/omerozkilic/citewell/issues/48))
+- [x] Security: Container hardening in compose.yaml ([#49](https://github.com/omerozkilic/citewell/issues/49))
+- [x] Security: Supply chain: pip-audit, SBOM and build provenance ([#50](https://github.com/omerozkilic/citewell/issues/50))
+- [x] Security: Parser hardening and model revision pinning ([#51](https://github.com/omerozkilic/citewell/issues/51))
 
-## 0.4 — UI bridge & sharing
+## 0.4 — UI bridge & sharing (next)
 - [ ] OpenAI-compatible `/v1/chat/completions` adapter so UIs like Open WebUI can use Citewell ([#23](https://github.com/omerozkilic/citewell/issues/23))
   (generation delegated to a user-configured model; the core stays LLM-free — needs an ADR)
 - [ ] Per-collection tokens / read scopes for the HTTP endpoint ([#24](https://github.com/omerozkilic/citewell/issues/24)) — also covers rate limiting and an optional audit log
