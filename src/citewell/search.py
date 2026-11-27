@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from citewell.answerability import confidence
@@ -20,6 +20,9 @@ from citewell.text import best_quote
 log = logging.getLogger(__name__)
 
 MODES = ("vector", "keyword", "hybrid")
+
+SearchProgress = Callable[[int, int, str], None]
+"""``(step, total_steps, message)``: called before each slow stage of a search (see ``SearchService``)."""
 
 
 @dataclass(slots=True)
@@ -69,11 +72,20 @@ class SearchService:
 
     metrics: Metrics | None = None
 
-    def search(self, req: SearchRequest) -> SearchResponse:
+    def _embedder_ready(self) -> bool:
+        """False while the embedding model still has to be loaded (the first query after start-up)."""
+        return True
+
+    def _reranker_ready(self) -> bool:
+        return True
+
+    def search(self, req: SearchRequest, progress: SearchProgress | None = None) -> SearchResponse:
+        """Run a search. ``progress`` is told about the slow stages: loading a model that is not loaded
+        yet, the retrieval itself and reranking, so a client can show that something is happening."""
         t0 = time.perf_counter()
         mode = req.mode if req.mode in MODES else "invalid"
         try:
-            resp = self._search(req)
+            resp = self._search(req, progress)
         except Exception:
             self._record(mode, t0, "error")
             raise
@@ -90,7 +102,7 @@ class SearchService:
             "citewell_search_duration_seconds", "End-to-end search time.", time.perf_counter() - t0, mode=mode
         )
 
-    def _search(self, req: SearchRequest) -> SearchResponse:
+    def _search(self, req: SearchRequest, progress: SearchProgress | None = None) -> SearchResponse:
         query = req.query.strip()
         if not query:
             raise ValueError("query must not be empty")
@@ -98,10 +110,18 @@ class SearchService:
             raise ValueError(f"mode must be one of {', '.join(MODES)}")
         top_k = max(1, min(req.top_k, self.settings.max_top_k))
         use_rerank = self.settings.rerank_by_default if req.rerank is None else req.rerank
-        if use_rerank and self.reranker is None:
-            raise ValueError("reranking requested but no reranker is configured")
+        load_embedder = req.mode in ("vector", "hybrid") and not self._embedder_ready()
+        load_reranker = bool(use_rerank) and not self._reranker_ready()
+        steps = _Steps(progress, int(load_embedder) + int(load_reranker) + 1 + int(bool(use_rerank)))
+        if load_embedder:
+            steps.next("Loading the embedding model (first query after start-up)…")
         if req.mode in ("vector", "hybrid"):
             _ = self.embedder  # load the model before timing: took_ms measures search only
+        if load_reranker:
+            steps.next("Loading the reranker (first use)…")
+        if use_rerank and self.reranker is None:
+            raise ValueError("reranking requested but no reranker is configured")
+        steps.next("Searching…")
 
         t0 = time.perf_counter()
 
@@ -162,6 +182,7 @@ class SearchService:
 
         if use_rerank and candidates:
             assert self.reranker is not None
+            steps.next(f"Reranking {len(candidates)} candidates…")
             texts = [
                 _rerank_text(records[cid].title, records[cid].section, records[cid].text)
                 for cid, _ in candidates
@@ -214,6 +235,24 @@ class SearchService:
             confidence=conf,
             answerable=bool(hits) and conf >= self.settings.answerable_threshold,
         )
+
+
+class _Steps:
+    """Reports ``(step, total, message)`` and never lets a failing callback break the search."""
+
+    def __init__(self, progress: SearchProgress | None, total: int):
+        self._progress = progress
+        self._total = total
+        self._done = 0
+
+    def next(self, message: str) -> None:
+        self._done += 1
+        if self._progress is None:
+            return
+        try:
+            self._progress(self._done, self._total, message)
+        except Exception:
+            log.debug("progress callback failed", exc_info=True)
 
 
 def _rerank_text(title: str | None, section: str | None, text: str) -> str:

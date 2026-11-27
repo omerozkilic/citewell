@@ -44,7 +44,7 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
 - [x] Per-collection tokens / read scopes for the HTTP endpoint ([#24](https://github.com/omerozkilic/citewell/issues/24)), [ADR-0008](adr/0008-scoped-api-tokens.md)
 - [x] Per-token rate limiting (`CITEWELL_RATE_LIMIT_PER_MINUTE`, follow-up to #24)
 - [x] Optional audit log (`CITEWELL_AUDIT_LOG`, follow-up to #24)
-- [ ] Progress notifications for long MCP operations ([#25](https://github.com/omerozkilic/citewell/issues/25))
+- [x] Progress notifications for long MCP operations ([#25](https://github.com/omerozkilic/citewell/issues/25))
 - [x] Metadata filters in search ([#39](https://github.com/omerozkilic/citewell/issues/39))
 - [x] Export citations (BibTeX, CSL-JSON, Markdown footnotes) ([#40](https://github.com/omerozkilic/citewell/issues/40))
 - [x] Answerability signal ("not in the documents") ([#41](https://github.com/omerozkilic/citewell/issues/41))
