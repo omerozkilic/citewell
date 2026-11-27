@@ -49,7 +49,7 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
 - [x] Export citations (BibTeX, CSL-JSON, Markdown footnotes) ([#40](https://github.com/omerozkilic/citewell/issues/40))
 - [x] Answerability signal ("not in the documents") ([#41](https://github.com/omerozkilic/citewell/issues/41))
 - [ ] Minimal web UI at `/ui` ([#42](https://github.com/omerozkilic/citewell/issues/42))
-- [ ] Prometheus `/metrics` ([#43](https://github.com/omerozkilic/citewell/issues/43))
+- [x] Prometheus `/metrics` ([#43](https://github.com/omerozkilic/citewell/issues/43))
 
 ## 1.0 and later
 - Stable API and MCP tool contracts ([#26](https://github.com/omerozkilic/citewell/issues/26))

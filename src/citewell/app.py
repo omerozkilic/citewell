@@ -18,6 +18,7 @@ from citewell.config import Settings, get_settings
 from citewell.embeddings import Embedder, build_embedder
 from citewell.hub import prefer_offline
 from citewell.ingest import IngestService
+from citewell.metrics import Metrics
 from citewell.rerank import Reranker, build_reranker
 from citewell.search import SearchService
 from citewell.store import Store
@@ -35,6 +36,7 @@ class Citewell:
         self._embedder: Embedder | None = None
         self._reranker: Reranker | None = None
         self._reranker_loaded = False
+        self.metrics = Metrics()
 
     # ---------------------------------------------------------------- database
 
@@ -159,6 +161,7 @@ class _LazyRerankSearch(SearchService):
         self._app = app
         self.store = app.store
         self.settings = app.settings
+        self.metrics = app.metrics if app.settings.metrics else None
 
     @property
     def embedder(self) -> Embedder:
