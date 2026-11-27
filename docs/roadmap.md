@@ -41,7 +41,8 @@ and [milestone](https://github.com/omerozkilic/citewell/milestones). Issues labe
 ## 0.4 — UI bridge & sharing (next)
 - [ ] OpenAI-compatible `/v1/chat/completions` adapter so UIs like Open WebUI can use Citewell ([#23](https://github.com/omerozkilic/citewell/issues/23))
   (generation delegated to a user-configured model; the core stays LLM-free — needs an ADR)
-- [ ] Per-collection tokens / read scopes for the HTTP endpoint ([#24](https://github.com/omerozkilic/citewell/issues/24)) — also covers rate limiting and an optional audit log
+- [x] Per-collection tokens / read scopes for the HTTP endpoint ([#24](https://github.com/omerozkilic/citewell/issues/24)), [ADR-0008](adr/0008-scoped-api-tokens.md)
+- [ ] Per-token rate limiting and optional audit log (follow-up to #24)
 - [ ] Progress notifications for long MCP operations ([#25](https://github.com/omerozkilic/citewell/issues/25))
 - [ ] Metadata filters in search ([#39](https://github.com/omerozkilic/citewell/issues/39))
 - [ ] Export citations (BibTeX, CSL-JSON, Markdown footnotes) ([#40](https://github.com/omerozkilic/citewell/issues/40))

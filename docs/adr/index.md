@@ -9,5 +9,6 @@
 | [0005](0005-local-multilingual-models.md) | Local multilingual models |
 | [0006](0006-page-aware-chunking.md) | Page-aware chunking, verbatim slices, stable ids |
 | [0007](0007-read-only-mcp.md) | MCP-first, read-only tool surface |
+| [0008](0008-scoped-api-tokens.md) | Scoped API tokens (per-collection read/write) |
 
 New ADRs: copy [template.md](template.md).

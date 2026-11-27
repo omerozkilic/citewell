@@ -16,8 +16,9 @@ from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
 
 from citewell import db
+from citewell.auth import Scope
 from citewell.embeddings import Vector
-from citewell.models import ChunkDraft, ChunkRecord, Collection, DocumentInfo, LoadedDocument
+from citewell.models import ChunkDraft, ChunkRecord, Collection, DocumentInfo, LoadedDocument, TokenInfo
 from citewell.text import fold, tr_lower
 
 COLLECTION_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
@@ -383,6 +384,78 @@ class Store:
         with self.read_tx() as conn:
             rows = conn.execute(sql, params).fetchall()
         return [RetrievedId(str(r[0]), float(r[1])) for r in rows]
+
+    # ------------------------------------------------------------------ tokens
+
+    def create_token(
+        self, name: str, token_hash: str, collections: Sequence[str] | None, can_write: bool
+    ) -> TokenInfo:
+        if not name.strip():
+            raise ValueError("a token needs a name")
+        names = sorted(set(collections)) if collections is not None else None
+        if names is not None:
+            known = {c.name for c in self.list_collections()}
+            unknown = [n for n in names if n not in known]
+            if unknown:
+                raise NotFoundError(f"collection not found: {', '.join(unknown)}")
+        with self.conn() as conn, conn.cursor(row_factory=dict_row) as cur:
+            try:
+                cur.execute(
+                    """
+                    INSERT INTO api_tokens (name, token_hash, collections, can_write)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id, name, collections, can_write, created_at, revoked_at
+                    """,
+                    (name, token_hash, names, can_write),
+                )
+            except psycopg.errors.UniqueViolation as exc:
+                conn.rollback()
+                raise ValueError(f"an active token named '{name}' already exists") from exc
+            row = cur.fetchone()
+            conn.commit()
+        assert row is not None
+        return TokenInfo(**row)
+
+    def list_tokens(self, include_revoked: bool = False) -> list[TokenInfo]:
+        sql = "SELECT id, name, collections, can_write, created_at, revoked_at FROM api_tokens"
+        if not include_revoked:
+            sql += " WHERE revoked_at IS NULL"
+        with self.conn() as conn, conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(sql + " ORDER BY id")
+            return [TokenInfo(**r) for r in cur.fetchall()]
+
+    def revoke_token(self, name: str) -> bool:
+        with self.conn() as conn:
+            cur = conn.execute(
+                "UPDATE api_tokens SET revoked_at = now() WHERE name = %s AND revoked_at IS NULL", (name,)
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+    def token_scope(self, token_hash: str) -> Scope | None:
+        """Scope of an active token, or ``None`` when the hash is unknown or revoked."""
+        with self.conn() as conn:
+            row = conn.execute(
+                "SELECT name, collections, can_write FROM api_tokens "
+                "WHERE token_hash = %s AND revoked_at IS NULL",
+                (token_hash,),
+            ).fetchone()
+        if row is None:
+            return None
+        return Scope(
+            collections=None if row[1] is None else frozenset(row[1]),
+            can_write=bool(row[2]),
+            token_name=row[0],
+        )
+
+    def has_active_tokens(self) -> bool:
+        """True when scoped tokens exist; a database that predates the tokens table has none."""
+        with self.conn() as conn:
+            exists = conn.execute("SELECT to_regclass('api_tokens') IS NOT NULL").fetchone()
+            if not exists or not exists[0]:
+                return False
+            row = conn.execute("SELECT EXISTS (SELECT 1 FROM api_tokens WHERE revoked_at IS NULL)").fetchone()
+        return bool(row and row[0])
 
 
 def _like_prefix(prefix: str) -> str:

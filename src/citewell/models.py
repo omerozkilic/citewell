@@ -47,6 +47,15 @@ class Collection(BaseModel):
     created_at: datetime | None = None
 
 
+class TokenInfo(BaseModel):
+    id: int
+    name: str
+    collections: list[str] | None = Field(default=None, description="None means all collections.")
+    can_write: bool = False
+    created_at: datetime | None = None
+    revoked_at: datetime | None = None
+
+
 class DocumentInfo(BaseModel):
     id: int
     collection: str

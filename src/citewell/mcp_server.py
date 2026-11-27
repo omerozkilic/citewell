@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 
 from citewell import __version__
 from citewell.app import Citewell
+from citewell.auth import current_scope
 from citewell.config import MAX_QUERY_CHARS
 from citewell.models import (
     ChunkRecord,
@@ -125,6 +126,10 @@ def build_server(app: Citewell) -> MCPServer:
     )
     settings = app.settings
 
+    def _visible_collections() -> list[Collection]:
+        scope = current_scope()
+        return [c for c in app.store.list_collections() if scope.allows(c.name)]
+
     @mcp.tool(title="Search documents", annotations=READ_ONLY)
     def search_documents(
         query: Annotated[
@@ -158,7 +163,9 @@ def build_server(app: Citewell) -> MCPServer:
                 query=query,
                 top_k=top_k,
                 mode=mode,
-                collections=[collection] if collection else None,
+                collections=current_scope().resolve(
+                    [collection] if collection else None, settings.default_collection
+                ),
                 rerank=rerank,
                 source_prefix=source_prefix,
             )
@@ -181,6 +188,9 @@ def build_server(app: Citewell) -> MCPServer:
     ) -> ChunkWithContext:
         """Read a chunk by id, optionally with surrounding chunks from the same document."""
         rows = app.store.neighbours(chunk_id, window=context)
+        scope = current_scope()
+        for row in rows:
+            scope.require(row.collection)
         chunk = next(r for r in rows if r.chunk_id == chunk_id)
         return ChunkWithContext(
             chunk=chunk,
@@ -191,14 +201,19 @@ def build_server(app: Citewell) -> MCPServer:
     @mcp.tool(title="List collections", annotations=READ_ONLY)
     def list_collections() -> CollectionList:
         """List document collections with their language and size."""
-        return CollectionList(collections=app.store.list_collections())
+        return CollectionList(collections=_visible_collections())
 
     @mcp.tool(title="List documents", annotations=READ_ONLY)
     def list_documents(
         collection: Annotated[str | None, Field(description="Collection name; omit for all.")] = None,
     ) -> DocumentList:
         """List ingested documents (source path, title, pages, chunk count)."""
-        return DocumentList(documents=app.store.list_documents(collection))
+        scope = current_scope()
+        if collection:
+            scope.require(collection)
+        return DocumentList(
+            documents=[d for d in app.store.list_documents(collection) if scope.allows(d.collection)]
+        )
 
     @mcp.tool(title="Verify quote", annotations=READ_ONLY)
     def verify_quote(
@@ -225,8 +240,14 @@ def build_server(app: Citewell) -> MCPServer:
         Returns verified=true for verbatim matches (ignoring case, quote marks and dashes; "…" gaps
         allowed). Otherwise returns the closest source wording in source_text with its citation.
         """
+        scope = current_scope()
+        if chunk_id:
+            scope.require(app.store.get_chunk(chunk_id).collection)
         return app.verifier.verify(
-            quote, chunk_id=chunk_id, source=source, collections=[collection] if collection else None
+            quote,
+            chunk_id=chunk_id,
+            source=source,
+            collections=scope.resolve_all([collection] if collection else None),
         )
 
     @mcp.resource(
@@ -237,7 +258,7 @@ def build_server(app: Citewell) -> MCPServer:
         mime_type="application/json",
     )
     def collections_resource() -> str:
-        return CollectionList(collections=app.store.list_collections()).model_dump_json(indent=2)
+        return CollectionList(collections=_visible_collections()).model_dump_json(indent=2)
 
     @mcp.resource(
         "citewell://chunks/{chunk_id}",
@@ -248,6 +269,7 @@ def build_server(app: Citewell) -> MCPServer:
     )
     def chunk_resource(chunk_id: str) -> str:
         c = app.store.get_chunk(chunk_id)
+        current_scope().require(c.collection)
         return f"[{citation_label(c.source, c.page, c.section, c.page_label)} · {c.chunk_id}]\n\n{c.text}"
 
     @mcp.resource(
@@ -258,6 +280,7 @@ def build_server(app: Citewell) -> MCPServer:
         mime_type="application/json",
     )
     def collection_documents(collection: str) -> str:
+        current_scope().require(collection)
         app.store.get_collection(collection)  # raises a clear error for unknown names
         return DocumentList(documents=app.store.list_documents(collection)).model_dump_json(indent=2)
 
@@ -271,7 +294,7 @@ def build_server(app: Citewell) -> MCPServer:
         if argument.name != "collection":
             return None
         prefix = (argument.value or "").lower()
-        names = await anyio.to_thread.run_sync(lambda: [c.name for c in app.store.list_collections()])
+        names = await anyio.to_thread.run_sync(lambda: [c.name for c in _visible_collections()])
         matches = [n for n in names if n.startswith(prefix)]
         return Completion(values=matches[:100], total=len(matches), has_more=len(matches) > 100)
 

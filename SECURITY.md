@@ -30,7 +30,9 @@ Citewell is designed to run **locally or inside a trusted network**. Things to k
 - **Network exposure.** By default the server binds to `127.0.0.1` and the Docker Compose file
   publishes ports on `127.0.0.1` only. The HTTP MCP endpoint validates `Host`/`Origin` headers against
   DNS-rebinding attacks. If you expose Citewell beyond localhost, set `CITEWELL_API_TOKEN` (bearer
-  auth for REST and MCP) and put it behind TLS.
+  auth for REST and MCP) and put it behind TLS. To share a server, give each person or tool a scoped
+  token (`citewell tokens create`, ADR-0008): it is limited to its collections, read-only unless created
+  with `--write`, stored only as a SHA-256 and revocable at once.
 - **Query limits.** Search queries are capped at 2000 characters and `top_k` at `CITEWELL_MAX_TOP_K` on
   both REST and MCP, and every search runs under `CITEWELL_STATEMENT_TIMEOUT_MS` (default 15 s), so a
   single expensive query cannot hold a database connection indefinitely.

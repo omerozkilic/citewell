@@ -11,10 +11,20 @@ from fastapi.responses import JSONResponse
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Receive, Send
+from starlette.types import Scope as Scope_
 
 from citewell import __version__
 from citewell.app import Citewell
+from citewell.auth import (
+    UNRESTRICTED,
+    ForbiddenError,
+    Scope,
+    current_scope,
+    hash_token,
+    reset_scope,
+    set_scope,
+)
 from citewell.config import MAX_QUERY_CHARS
 from citewell.db import SchemaMismatchError
 from citewell.loaders import SUPPORTED_SUFFIXES
@@ -63,26 +73,54 @@ class Health(BaseModel):
 
 
 class BearerAuthMiddleware:
-    """Pure ASGI middleware so it also protects the mounted MCP app (which streams)."""
+    """Pure ASGI middleware so it also protects the mounted MCP app (which streams).
 
-    def __init__(self, app: ASGIApp, token: str, exempt: tuple[str, ...] = ("/health",)):
+    A request is accepted with the ``CITEWELL_API_TOKEN`` (unrestricted) or with an active scoped token
+    from ``citewell tokens create``. While neither is configured the server is open, as before.
+    """
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        cw: Citewell,
+        token: str | None = None,
+        exempt: tuple[str, ...] = ("/health",),
+    ):
         self.app = app
-        self.token = token.encode()
+        self.cw = cw
+        self.token = token.encode() if token is not None else None
         self.exempt = exempt
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    def _authenticate(self, presented: bytes | None) -> Scope | None:
+        if presented and self.token is not None and hmac.compare_digest(presented, self.token):
+            return UNRESTRICTED
+        if presented:
+            scope = self.cw.store.token_scope(hash_token(presented.decode("utf-8", "replace")))
+            if scope is not None:
+                return scope
+        if self.token is None and not self.cw.store.has_active_tokens():
+            return UNRESTRICTED
+        return None
+
+    async def __call__(self, scope: Scope_, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or scope["path"] in self.exempt:
             await self.app(scope, receive, send)
             return
         headers = dict(scope.get("headers") or [])
         auth = headers.get(b"authorization", b"")
         scheme, _, value = auth.partition(b" ")
-        if scheme.lower() != b"bearer" or not hmac.compare_digest(value.strip(), self.token):
+        presented = value.strip() if scheme.lower() == b"bearer" else None
+        caller = await run_in_threadpool(self._authenticate, presented)
+        if caller is None:
             response = JSONResponse({"detail": "invalid or missing bearer token"}, status_code=401)
             response.headers["WWW-Authenticate"] = "Bearer"
             await response(scope, receive, send)
             return
-        await self.app(scope, receive, send)
+        reset = set_scope(caller)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            reset_scope(reset)
 
 
 def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> FastAPI:
@@ -138,6 +176,10 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
     async def _not_found(_: Request, exc: NotFoundError) -> JSONResponse:
         return JSONResponse({"detail": str(exc)}, status_code=404)
 
+    @api.exception_handler(ForbiddenError)
+    async def _forbidden(_: Request, exc: ForbiddenError) -> JSONResponse:
+        return JSONResponse({"detail": str(exc)}, status_code=403)
+
     @api.exception_handler(QueryTimeoutError)
     async def _timeout(_: Request, exc: QueryTimeoutError) -> JSONResponse:
         return JSONResponse({"detail": str(exc)}, status_code=504)
@@ -168,7 +210,7 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
                 query=body.query,
                 top_k=body.top_k,
                 mode=body.mode,
-                collections=body.collections,
+                collections=current_scope().resolve(body.collections, settings.default_collection),
                 rerank=body.rerank,
                 source_prefix=body.source_prefix,
             )
@@ -184,40 +226,69 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
         rerank: bool | None = None,
     ) -> SearchResponse:
         return cw.search.search(
-            SearchRequest(query=q, top_k=k, mode=mode, collections=collection, rerank=rerank)
+            SearchRequest(
+                query=q,
+                top_k=k,
+                mode=mode,
+                collections=current_scope().resolve(collection, settings.default_collection),
+                rerank=rerank,
+            )
         )
 
     @api.post("/v1/verify", response_model=QuoteCheck, tags=["search"])
     def verify(body: VerifyBody, cw: Svc) -> QuoteCheck:
+        scope = current_scope()
+        if body.chunk_id:
+            scope.require(cw.store.get_chunk(body.chunk_id).collection)
         return cw.verifier.verify(
-            body.quote, chunk_id=body.chunk_id, source=body.source, collections=body.collections
+            body.quote,
+            chunk_id=body.chunk_id,
+            source=body.source,
+            collections=scope.resolve_all(body.collections),
         )
 
     @api.get("/v1/chunks/{chunk_id}", response_model=list[ChunkRecord], tags=["chunks"])
     def get_chunk(
         chunk_id: str, cw: Svc, context: Annotated[int, Query(ge=0, le=5)] = 0
     ) -> list[ChunkRecord]:
-        return cw.store.neighbours(chunk_id, window=context)
+        rows = cw.store.neighbours(chunk_id, window=context)
+        scope = current_scope()
+        for row in rows:
+            scope.require(row.collection)
+        return rows
 
     @api.get("/v1/collections", response_model=list[Collection], tags=["collections"])
     def list_collections(cw: Svc) -> list[Collection]:
-        return cw.store.list_collections()
+        scope = current_scope()
+        return [c for c in cw.store.list_collections() if scope.allows(c.name)]
 
     @api.post("/v1/collections", response_model=Collection, status_code=201, tags=["collections"])
     def create_collection(body: CollectionBody, cw: Svc) -> Collection:
+        scope = current_scope()
+        scope.require_write()
+        scope.require(body.name)
         return cw.store.ensure_collection(body.name, body.language, body.description)
 
     @api.delete("/v1/collections/{name}", status_code=204, tags=["collections"])
     def delete_collection(name: str, cw: Svc) -> None:
+        scope = current_scope()
+        scope.require_write()
+        scope.require(name)
         if not cw.store.delete_collection(name):
             raise HTTPException(404, f"collection not found: {name}")
 
     @api.get("/v1/documents", response_model=list[DocumentInfo], tags=["documents"])
     def list_documents(cw: Svc, collection: str | None = None) -> list[DocumentInfo]:
-        return cw.store.list_documents(collection)
+        scope = current_scope()
+        if collection:
+            scope.require(collection)
+        return [d for d in cw.store.list_documents(collection) if scope.allows(d.collection)]
 
     @api.delete("/v1/documents", status_code=204, tags=["documents"])
     def delete_document(cw: Svc, collection: str, source: str) -> None:
+        scope = current_scope()
+        scope.require_write()
+        scope.require(collection)
         if not cw.store.delete_document(collection, source):
             raise HTTPException(404, "document not found")
 
@@ -231,6 +302,9 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
         language: Annotated[Literal["turkish", "english", "simple"] | None, Form()] = None,
         force: Annotated[bool, Form()] = False,
     ) -> IngestResult:
+        scope = current_scope()
+        scope.require_write()
+        scope.require(collection or settings.default_collection)
         name = (file.filename or "upload").replace("\\", "/").rsplit("/", 1)[-1]
         if not any(name.lower().endswith(s) for s in SUPPORTED_SUFFIXES):
             raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, f"unsupported file type: {name}")
@@ -244,7 +318,10 @@ def create_app(citewell: Citewell | None = None, mount_mcp: bool = True) -> Fast
         # Mounted last so that it only receives /mcp (all other routes match first).
         api.mount("/", mcp_app)
 
-    if settings.api_token is not None:
-        api.add_middleware(BearerAuthMiddleware, token=settings.api_token.get_secret_value())
+    api.add_middleware(
+        BearerAuthMiddleware,
+        cw=cw,
+        token=settings.api_token.get_secret_value() if settings.api_token is not None else None,
+    )
 
     return api

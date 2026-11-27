@@ -25,10 +25,21 @@ curl -s localhost:8000/v1/search -H 'content-type: application/json' \
 curl -s -F file=@kvkk-politikasi.pdf -F collection=hukuk localhost:8000/v1/documents
 ```
 
-Errors use standard status codes: `400` invalid input, `401` missing/invalid token, `404` unknown
+Errors use standard status codes: `400` invalid input, `401` missing/invalid token, `403` outside the token's scope, `404` unknown
 collection/chunk, `413` upload too large, `415` unsupported file type.
 
 ## Authentication
 
 Set `CITEWELL_API_TOKEN` to require `Authorization: Bearer <token>` on every endpoint except
 `/health` — including `/mcp`.
+
+### Scoped tokens
+
+`citewell tokens create NAME -c COLLECTION [-c ...] [--write]` (or `--all-collections`) makes a token
+limited to those collections; `tokens list` and `tokens revoke NAME` manage them. Only a hash is stored
+and the secret is shown once. A scoped token can search, verify, read chunks and list the collections
+and documents it may see; `--write` additionally allows `POST /v1/documents`, `POST /v1/collections`
+and the DELETE endpoints, still only inside its collections. Anything else returns `403`. Searches
+without a collection use the default collection when the token may read it, `"*"` means all of its
+collections. `CITEWELL_API_TOKEN` stays unrestricted. Once any scoped token exists, the server rejects
+requests without a valid token even if `CITEWELL_API_TOKEN` is unset.
