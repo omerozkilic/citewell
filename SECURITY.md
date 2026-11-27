@@ -36,6 +36,9 @@ Citewell is designed to run **locally or inside a trusted network**. Things to k
 - **Audit log.** `CITEWELL_AUDIT_LOG` writes one JSON line per request (token name, client address, method,
   path, status; failed logins and rate-limited requests included). Query strings, bodies and document
   text are never recorded. MCP calls appear as `POST /mcp` without the tool name.
+- **Web UI.** `/ui` serves three static files (`CITEWELL_UI=false` removes them). They are reachable without a
+  token because they hold no data; the API calls they make need it. Passages are rendered as text, never
+  HTML, and a restrictive Content-Security-Policy is sent. The token is kept in `sessionStorage` only.
 - **Metrics.** `GET /metrics` (`CITEWELL_METRICS=true`) is off by default, sits behind the same token as the
   rest of the API and is refused to scoped tokens. Labels are route templates, never document text or queries.
 - **Rate limiting.** `CITEWELL_RATE_LIMIT_PER_MINUTE` caps requests per token (per client address without
